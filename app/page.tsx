@@ -11,6 +11,7 @@ type AppId =
   | 'projectDetail'
   | 'properties'
   | 'achievements'
+  | 'achievementDetail'
   | 'gallery'
   | 'photoViewer'
   | 'about'
@@ -34,6 +35,7 @@ type WindowState = {
   project?: string;
   experience?: string;
   photo?: string;
+  achievement?: string;
 };
 
 type ContextMenuState =
@@ -54,6 +56,7 @@ type SearchResult = {
   project?: string;
   experience?: string;
   photo?: string;
+  achievement?: string;
 };
 
 const I = '/icons/xp';
@@ -87,6 +90,7 @@ function BrandIcon({name, logo, size = 52}: {name: string; logo?: string; size?:
 function ProjectCover({project, compact = false}: {project: Project; compact?: boolean}) {
   return (
     <div className={`project-cover tone-${project.coverTone} ${compact ? 'compact' : ''}`} aria-hidden="true">
+      {project.logo && <img className="project-cover-logo" src={project.logo} alt="" draggable={false}/>}
       <span className="cover-kicker">{project.kind}</span>
       <strong>{project.name}</strong>
       <span className="cover-status">{project.status}</span>
@@ -228,7 +232,7 @@ export default function Home() {
     if (searchScope === 'all' || searchScope === 'achievements') {
       for (const award of awards) {
         if ([award.name, award.issuer || '', award.description, award.year].some(matches)) {
-          results.push({id: `award-${award.year}-${award.name}`, type: 'achievements', title: award.name, subtitle: `${award.year}${award.issuer ? ` · ${award.issuer}` : ''}`, icon: `${I}/certificate.svg`});
+          results.push({id: `award-${award.year}-${award.name}`, type: 'achievements', title: award.name, subtitle: `${award.year}${award.issuer ? ` · ${award.issuer}` : ''}`, icon: `${I}/certificate.svg`, achievement: award.name});
         }
       }
     }
@@ -242,7 +246,7 @@ export default function Home() {
     return results.slice(0, 50);
   }, [searchQuery, searchScope]);
 
-  function launch(app: AppId, title?: string, url?: string, project?: string, experience?: string, photo?: string) {
+  function launch(app: AppId, title?: string, url?: string, project?: string, experience?: string, photo?: string, achievement?: string) {
     setStart(false);
     setContext(null);
     setRunError('');
@@ -259,6 +263,7 @@ export default function Home() {
       run: [460, 220],
       search: [790, 540],
       projectDetail: [840, 610],
+      achievementDetail: [780, 580],
       properties: [570, 520],
       experienceProperties: [610, 545],
     };
@@ -277,6 +282,7 @@ export default function Home() {
       project,
       experience,
       photo,
+      achievement,
     }]);
     setActive(id);
   }
@@ -328,6 +334,12 @@ export default function Home() {
     launch('experienceProperties', `${experience.organization} Properties`, undefined, undefined, experience.id);
   }
 
+  function openAchievement(name: string) {
+    const award = awards.find(item => item.name === name);
+    if (!award) return;
+    launch('achievementDetail', `${award.name} — Achievement`, undefined, undefined, undefined, undefined, award.name);
+  }
+
   function openPhoto(id: string) {
     const photo = photos.find(item => item.id === id);
     if (!photo) return;
@@ -349,7 +361,7 @@ export default function Home() {
     if (result.type === 'projects' && result.project) openProject(result.project);
     else if (result.type === 'experience' && result.experience) experienceProperties(result.experience);
     else if (result.type === 'pictures' && result.photo) openPhoto(result.photo);
-    else if (result.type === 'achievements') launch('achievements');
+    else if (result.type === 'achievements' && result.achievement) openAchievement(result.achievement);
   }
 
   function runProgram(event: FormEvent) {
@@ -415,7 +427,7 @@ export default function Home() {
 
   function windowIcon(win: WindowState) {
     if (win.app === 'browser') return `${I}/internet-explorer.svg`;
-    if (win.app === 'achievements') return `${I}/achievements.svg`;
+    if (win.app === 'achievements' || win.app === 'achievementDetail') return `${I}/achievements.svg`;
     if (win.app === 'experience' || win.app === 'experienceProperties') return `${I}/folder.svg`;
     if (win.app === 'gallery') return `${I}/my-pictures.svg`;
     if (win.app === 'photoViewer') return `${I}/image-file.svg`;
@@ -435,6 +447,7 @@ export default function Home() {
     if (win.app === 'projectDetail') return `C:\\Documents and Settings\\Nurbek\\My Projects\\${win.project || ''}\\Project Center`;
     if (win.app === 'properties') return `${win.project || win.title}`;
     if (win.app === 'experienceProperties') return `${win.experience || win.title}`;
+    if (win.app === 'achievementDetail') return `C:\\Documents and Settings\\Nurbek\\Achievements\\${win.achievement || ''}`;
     if (win.app === 'search') return 'Search Results';
     return `C:\\Documents and Settings\\Nurbek\\${win.title}`;
   }
@@ -457,7 +470,7 @@ export default function Home() {
     if (window.matchMedia('(pointer: coarse)').matches) action();
   }
 
-  const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'gallery', 'documents', 'recycle', 'browser', 'search'];
+  const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'achievementDetail', 'gallery', 'documents', 'recycle', 'browser', 'search'];
 
   return (
     <main
@@ -541,7 +554,7 @@ export default function Home() {
                 <div className="xp-toolbar" role="toolbar" aria-label="Explorer toolbar">
                   <button type="button" disabled title="Back"><Icon src={`${I}/back.svg`} size={24}/> <span>Back</span></button>
                   <button type="button" className="icon-only" disabled title="Forward"><Icon src={`${I}/forward.svg`} size={24}/></button>
-                  <button type="button" className="icon-only" title="Up one level" onClick={() => win.app === 'projectFolder' || win.app === 'projectDetail' ? launch('projects') : launch('about')}><Icon src={`${I}/up.svg`} size={22}/></button>
+                  <button type="button" className="icon-only" title="Up one level" onClick={() => win.app === 'projectFolder' || win.app === 'projectDetail' ? launch('projects') : win.app === 'achievementDetail' ? launch('achievements') : launch('about')}><Icon src={`${I}/up.svg`} size={22}/></button>
                   <span className="toolbar-divider"/>
                   <button type="button" onClick={() => launch('search', 'Search Results')}><Icon src={`${I}/search.svg`} size={24}/> <span>Search</span></button>
                   <button type="button" className={foldersPane ? 'toolbar-pressed' : ''} onClick={() => setFoldersPane(value => !value)}><Icon src={`${I}/folder.svg`} size={23}/> <span>Folders</span></button>
@@ -597,6 +610,7 @@ export default function Home() {
               {win.app === 'projectDetail' && (() => {
                 const project = projects.find(item => item.name === win.project);
                 if (!project) return null;
+                const projectPhotos = photos.filter(photo => photo.project === project.name).slice(0, 4);
                 return (
                   <div className={`project-center-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
                     {foldersPane && <aside className="explorer-sidebar project-sidebar">
@@ -620,6 +634,7 @@ export default function Home() {
                       </div>
                       <section className="project-section"><h3>What it is</h3><p>{project.detail}</p></section>
                       <section className="project-section"><h3>Tools & focus</h3><div className="tech-chips">{project.tech.split('·').map(item => <span key={item.trim()}>{item.trim()}</span>)}</div></section>
+                      {projectPhotos.length > 0 && <section className="project-section"><h3>Photos</h3><div className="inline-photo-grid">{projectPhotos.map(photo => <button type="button" key={photo.id} onClick={() => openPhoto(photo.id)}><img src={photo.src} alt={photo.alt} loading="lazy"/><span>{photo.title}</span></button>)}</div><button type="button" className="text-link-button" onClick={() => launch('gallery', `${project.name} - Pictures`, undefined, project.name)}>Open project gallery ({photos.filter(photo => photo.project === project.name).length})</button></section>}
                       <section className="project-section"><h3>Project files</h3><div className="mini-file-row"><button type="button" onClick={() => exploreProject(project.name)}><Icon src={`${I}/folder.svg`} size={28}/><span><b>Project folder</b><small>README, properties and links</small></span></button>{project.url && <button type="button" onClick={() => visitProject(project.name)}><Icon src={`${I}/internet-explorer.svg`} size={28}/><span><b>website.url</b><small>{project.url}</small></span></button>}</div></section>
                     </article>
                   </div>
@@ -629,10 +644,11 @@ export default function Home() {
               {win.app === 'projectFolder' && (() => {
                 const project = projects.find(item => item.name === win.project);
                 if (!project) return null;
+                const projectPhotos = photos.filter(photo => photo.project === project.name);
                 const files = [
                   ...(project.url ? [{name: 'website.url', type: 'url', icon: `${I}/internet-explorer.svg`, detail: 'Internet Shortcut'}] : []),
                   {name: 'PROJECT_INFO.txt', type: 'readme', icon: `${I}/text-file.svg`, detail: 'Text Document'},
-                  {name: 'media', type: 'media', icon: `${I}/my-pictures.svg`, detail: 'File Folder'},
+                  ...(projectPhotos.length ? [{name: 'media', type: 'media', icon: `${I}/my-pictures.svg`, detail: `${projectPhotos.length} Pictures`}] : []),
                   {name: `${project.name}.properties`, type: 'properties', icon: `${I}/properties.svg`, detail: 'Project Properties'},
                 ];
                 return (
@@ -651,13 +667,13 @@ export default function Home() {
                             onDoubleClick={() => {
                               if (file.type === 'url') visitProject(project.name);
                               else if (file.type === 'properties') projectProperties(project.name);
-                              else if (file.type === 'media') launch('gallery', `${project.name} - Pictures`);
+                              else if (file.type === 'media') launch('gallery', `${project.name} - Pictures`, undefined, project.name);
                               else openProject(project.name);
                             }}
                             onClick={() => activateOnTouch(() => {
                               if (file.type === 'url') visitProject(project.name);
                               else if (file.type === 'properties') projectProperties(project.name);
-                              else if (file.type === 'media') launch('gallery', `${project.name} - Pictures`);
+                              else if (file.type === 'media') launch('gallery', `${project.name} - Pictures`, undefined, project.name);
                               else openProject(project.name);
                             })}
                           >
@@ -706,32 +722,52 @@ export default function Home() {
                 <div className={`explorer-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
                   {foldersPane && <aside className="explorer-sidebar">
                     <div className="task-panel"><strong>Achievement Tasks</strong><button type="button" onClick={() => launch('search', 'Search Achievements')}>Search achievements</button></div>
-                    <div className="task-panel"><strong>Other Places</strong><button type="button" onClick={() => launch('projects')}>My Projects</button><button type="button" onClick={() => launch('experience')}>Work Experience</button></div>
+                    <div className="task-panel"><strong>Other Places</strong><button type="button" onClick={() => launch('projects')}>My Projects</button><button type="button" onClick={() => launch('experience')}>Work Experience</button><button type="button" onClick={() => launch('gallery')}>My Pictures</button></div>
                     <div className="task-panel"><strong>Details</strong><p><b>Achievements</b><br/>{awards.length} items</p></div>
                   </aside>}
                   <div className="awards-list">
-                    {awards.map((award, awardIndex) => <article className="award-file" key={`${award.year}-${awardIndex}`}><Icon src={`${I}/certificate.svg`} size={38}/><span><b>{award.name}</b><small>{award.year}{award.issuer ? ` · ${award.issuer}` : ''}</small><p>{award.description}</p></span></article>)}
+                    {awards.map((award, awardIndex) => {
+                      const count = photos.filter(photo => photo.achievement === award.name).length;
+                      return <button type="button" className="award-file" key={`${award.year}-${awardIndex}`} onDoubleClick={() => openAchievement(award.name)} onClick={() => activateOnTouch(() => openAchievement(award.name))}><Icon src={`${I}/certificate.svg`} size={38}/><span><b>{award.name}</b><small>{award.year}{award.issuer ? ` · ${award.issuer}` : ''}{count ? ` · ${count} pictures` : ''}</small><p>{award.description}</p></span></button>;
+                    })}
                   </div>
                 </div>
               )}
 
-              {win.app === 'gallery' && (
-                <div className={`explorer-layout gallery-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
+              {win.app === 'achievementDetail' && (() => {
+                const award = awards.find(item => item.name === win.achievement);
+                if (!award) return null;
+                const awardPhotos = photos.filter(photo => photo.achievement === award.name).slice(0, 4);
+                return <div className="achievement-detail">
+                  <header><Icon src={`${I}/certificate.svg`} size={58}/><div><span className="eyebrow">Achievement · {award.year}</span><h2>{award.name}</h2>{award.issuer && <p>{award.issuer}</p>}</div></header>
+                  <section><h3>About</h3><p>{award.description}</p></section>
+                  {awardPhotos.length > 0 ? <section><h3>Photos & documents</h3><div className="inline-photo-grid achievement-photos">{awardPhotos.map(photo => <button type="button" key={photo.id} onClick={() => openPhoto(photo.id)}><img src={photo.src} alt={photo.alt} loading="lazy"/><span>{photo.title}</span></button>)}</div><button type="button" className="text-link-button" onClick={() => launch('gallery', `${award.name} - Pictures`, undefined, undefined, undefined, undefined, award.name)}>Open all pictures</button></section> : <section><h3>Photos</h3><p className="muted-copy">No public photo has been added for this achievement yet.</p></section>}
+                </div>;
+              })()}
+
+              {win.app === 'gallery' && (() => {
+                const galleryPhotos = win.project
+                  ? photos.filter(photo => photo.project === win.project)
+                  : win.achievement
+                    ? photos.filter(photo => photo.achievement === win.achievement)
+                    : photos;
+                const groups = galleryPhotos.reduce<Record<string, typeof photos>>((acc, photo) => {
+                  const key = win.project || win.achievement ? 'Pictures' : photo.section;
+                  (acc[key] ||= []).push(photo);
+                  return acc;
+                }, {});
+                return <div className={`explorer-layout gallery-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
                   {foldersPane && <aside className="explorer-sidebar picture-sidebar">
-                    <div className="task-panel"><strong>Picture Tasks</strong><button type="button" onClick={() => photos[0] && openPhoto(photos[0].id)}>View as a slide show</button><button type="button" onClick={() => launch('search', 'Search Pictures')}>Search pictures</button></div>
-                    <div className="task-panel"><strong>Other Places</strong><button type="button" onClick={() => launch('documents')}>My Documents</button><button type="button" onClick={() => launch('projects')}>My Projects</button></div>
-                    <div className="task-panel"><strong>Details</strong><p><b>My Pictures</b><br/>{photos.length} images<br/>Album: NurbekOS build</p></div>
+                    <div className="task-panel"><strong>Picture Tasks</strong><button type="button" onClick={() => galleryPhotos[0] && openPhoto(galleryPhotos[0].id)}>View as a slide show</button><button type="button" onClick={() => launch('search', 'Search Pictures')}>Search pictures</button></div>
+                    <div className="task-panel"><strong>Other Places</strong><button type="button" onClick={() => launch('documents')}>My Documents</button><button type="button" onClick={() => launch('projects')}>My Projects</button><button type="button" onClick={() => launch('achievements')}>Achievements</button>{(win.project || win.achievement) && <button type="button" onClick={() => launch('gallery')}>All Pictures</button>}</div>
+                    <div className="task-panel"><strong>Details</strong><p><b>{win.project || win.achievement || 'My Pictures'}</b><br/>{galleryPhotos.length} images<br/>{win.project || win.achievement ? 'Filtered gallery' : 'Personal archive'}</p></div>
                   </aside>}
                   <div className="gallery-content">
-                    <div className="gallery-note"><b>My Pictures is now a real photo library.</b><span>The viewer, keyboard navigation and metadata are ready. Add more image files under <code>/public/photos</code> and register them in <code>app/data.ts</code>.</span></div>
-                    <div className="photo-grid">
-                      {photos.map(photo => <button type="button" key={photo.id} className="photo-tile" onDoubleClick={() => openPhoto(photo.id)} onClick={() => activateOnTouch(() => openPhoto(photo.id))}>
-                        <span className="photo-thumb"><img src={photo.src} alt={photo.alt} loading="lazy"/></span><span><b>{photo.title}</b><small>{photo.date}</small></span>
-                      </button>)}
-                    </div>
+                    <div className="gallery-note"><b>{win.project || win.achievement ? `${win.project || win.achievement} media` : 'My Pictures'}</b><span>{win.project || win.achievement ? 'Photos connected to this portfolio item.' : 'Projects, achievements, acceptances, events, and personal memories.'}</span></div>
+                    {galleryPhotos.length === 0 ? <div className="empty-gallery"><Icon src={`${I}/my-pictures.svg`} size={54}/><p>No pictures have been added here yet.</p></div> : Object.entries(groups).map(([group, items]) => <section className="gallery-group" key={group}><h3>{group}<span>{items.length}</span></h3><div className="photo-grid">{items.map(photo => <button type="button" key={photo.id} className="photo-tile" onDoubleClick={() => openPhoto(photo.id)} onClick={() => activateOnTouch(() => openPhoto(photo.id))}><span className="photo-thumb"><img src={photo.src} alt={photo.alt} loading="lazy"/></span><span><b>{photo.title}</b><small>{photo.album} · {photo.date}</small></span></button>)}</div></section>)}
                   </div>
-                </div>
-              )}
+                </div>;
+              })()}
 
               {win.app === 'photoViewer' && (() => {
                 const photo = photos.find(item => item.id === win.photo) || photos[0];
@@ -829,11 +865,12 @@ export default function Home() {
               {win.app === 'experienceProperties' && (() => {
                 const experience = experiences.find(item => item.id === win.experience);
                 if (!experience) return null;
-                return <div className="properties-body"><div className="property-tabs"><button type="button" className="active">General</button><button type="button">Summary</button></div><div className="property-head experience-property-head"><BrandIcon name={experience.organization} logo={experience.logo} size={56}/><div className="experience-property-title"><b>{experience.organization}</b><span>{experience.role}</span></div></div><div className="property-separator"/><dl className="property-grid"><dt>Role:</dt><dd>{experience.role}</dd><dt>Period:</dt><dd>{experience.period}</dd><dt>Location:</dt><dd>{experience.location}</dd>{experience.website && <><dt>Website:</dt><dd><a href={experience.website} target="_blank" rel="noopener noreferrer">{experience.website}</a></dd></>}</dl><div className="property-separator"/><p>{experience.description}</p><ul className="experience-highlights">{experience.highlights.map(item => <li key={item}>{item}</li>)}</ul>{experience.relatedProject && <div className="linked-project"><button type="button" className="xp-button" onClick={() => openProject(experience.relatedProject!)}>Open related project: {experience.relatedProject}</button></div>}<div className="properties-actions"><button type="button" className="xp-button" onClick={() => close(win.id)}>OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button></div></div>;
+                const experiencePhotos = photos.filter(photo => photo.experience === experience.id).slice(0, 4);
+                return <div className="properties-body"><div className="property-tabs"><button type="button" className="active">General</button><button type="button">Summary</button></div><div className="property-head experience-property-head"><BrandIcon name={experience.organization} logo={experience.logo} size={56}/><div className="experience-property-title"><b>{experience.organization}</b><span>{experience.role}</span></div></div><div className="property-separator"/><dl className="property-grid"><dt>Role:</dt><dd>{experience.role}</dd><dt>Period:</dt><dd>{experience.period}</dd><dt>Location:</dt><dd>{experience.location}</dd>{experience.website && <><dt>Website:</dt><dd><a href={experience.website} target="_blank" rel="noopener noreferrer">{experience.website}</a></dd></>}</dl><div className="property-separator"/><p>{experience.description}</p><ul className="experience-highlights">{experience.highlights.map(item => <li key={item}>{item}</li>)}</ul>{experiencePhotos.length > 0 && <div className="property-photo-strip">{experiencePhotos.map(photo => <button type="button" key={photo.id} onClick={() => openPhoto(photo.id)}><img src={photo.src} alt={photo.alt} loading="lazy"/></button>)}</div>}{experience.relatedProject && <div className="linked-project"><button type="button" className="xp-button" onClick={() => openProject(experience.relatedProject!)}>Open related project: {experience.relatedProject}</button></div>}<div className="properties-actions"><button type="button" className="xp-button" onClick={() => close(win.id)}>OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button></div></div>;
               })()}
             </div>
 
-            {showStatus && <div className="status-bar"><span>{win.app === 'projects' ? `${projects.length} objects` : win.app === 'experience' ? `${experiences.length} objects` : win.app === 'gallery' ? `${photos.length} pictures` : win.app === 'achievements' ? `${awards.length} objects` : 'Ready'}</span><span>My Computer</span></div>}
+            {showStatus && <div className="status-bar"><span>{win.app === 'projects' ? `${projects.length} objects` : win.app === 'experience' ? `${experiences.length} objects` : win.app === 'gallery' ? `${win.project ? photos.filter(photo => photo.project === win.project).length : win.achievement ? photos.filter(photo => photo.achievement === win.achievement).length : photos.length} pictures` : win.app === 'achievements' ? `${awards.length} objects` : 'Ready'}</span><span>My Computer</span></div>}
 
             {!win.maximized && !['run', 'about', 'properties', 'experienceProperties', 'photoViewer'].includes(win.app) && <button type="button" className="resize-handle" aria-label={`Resize ${win.title}`} onPointerDown={event => {event.stopPropagation(); resize.current = {id: win.id, startX: event.clientX, startY: event.clientY, width: win.width, height: win.height};}}/>}
           </section>
@@ -855,7 +892,7 @@ export default function Home() {
             <button type="button" onClick={() => launch('projects')}><Icon src={`${I}/my-projects.svg`} size={34}/><span><b>My Projects</b><small>Products, experiments & archives</small></span></button>
             <button type="button" onClick={() => launch('experience')}><Icon src={`${I}/folder.svg`} size={34}/><span><b>Work Experience</b><small>Roles, teams & organizations</small></span></button>
             <button type="button" onClick={() => launch('achievements')}><Icon src={`${I}/achievements.svg`} size={34}/><span><b>Achievements</b><small>Awards & recognitions</small></span></button>
-            <button type="button" onClick={() => launch('gallery')}><Icon src={`${I}/my-pictures.svg`} size={34}/><span><b>My Pictures</b><small>Photos & build snapshots</small></span></button>
+            <button type="button" onClick={() => launch('gallery')}><Icon src={`${I}/my-pictures.svg`} size={34}/><span><b>My Pictures</b><small>Photos, projects & memories</small></span></button>
           </div>
           <div>
             <button type="button" onClick={() => launch('documents')}><Icon src={`${I}/my-documents.svg`} size={27}/><b>My Documents</b></button>
