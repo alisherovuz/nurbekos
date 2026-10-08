@@ -64,6 +64,7 @@ export const profile = {
   links: {
     website: 'https://alisherov.com',
     github: 'https://github.com/alisherovuz',
+    telegram: 'https://t.me/uzalisherov',
     linkedin: 'https://www.linkedin.com/in/uzalisherov/',
   },
 };

@@ -607,15 +607,17 @@ export default function Home() {
     if (command === 'clear' || command === 'cls') {
       setTerminalLines([]); setTerminalInput(''); return;
     }
-    if (command === 'help') output.push('Commands: whoami, projects, experience, awards, photos, games, snake, minesweeper, badges, github, cv, date, clear');
-    else if (command === 'whoami') output.push(`${profile.name} — ${profile.headline}`);
+    if (command === 'help') output.push('Commands: whoami, projects, experience, awards, photos, games, snake, minesweeper, badges, telegram, linkedin, github, cv, date, clear');
+    else if (command === 'whoami') output.push(`${profile.name} — ${profile.title}`);
     else if (command === 'date') output.push(new Date().toString());
     else if (['projects','experience','awards','photos','games','snake','minesweeper','badges'].includes(command)) {
       const actions: Record<string, () => void> = {
         projects: () => launch('projects'), experience: () => launch('experience'), awards: () => launch('achievements'), photos: () => launch('gallery'), games: () => launch('games'), snake: openSnake, minesweeper: openMinesweeper, badges: () => launch('badges', 'NurbekOS Achievements'),
       };
       actions[command](); output.push(`Opening ${raw}...`);
-    } else if (command === 'github') { launch('browser', 'GitHub - Microsoft Internet Explorer', profile.links.github); output.push('Opening GitHub...'); }
+    } else if (command === 'telegram') { launch('browser', 'Telegram - Microsoft Internet Explorer', profile.links.telegram); output.push('Opening Telegram...'); }
+    else if (command === 'linkedin') { launch('browser', 'LinkedIn - Microsoft Internet Explorer', profile.links.linkedin); output.push('Opening LinkedIn...'); }
+    else if (command === 'github') { launch('browser', 'GitHub - Microsoft Internet Explorer', profile.links.github); output.push('Opening GitHub...'); }
     else if (command === 'cv') { window.open('/cv.pdf', '_blank', 'noopener,noreferrer'); output.push('Opening CV...'); }
     else output.push(`'${raw}' is not recognized as a command. Type help.`);
     setTerminalLines(lines => [...lines, ...output, '']);
@@ -1183,7 +1185,7 @@ export default function Home() {
               {win.app === 'run' && (
                 <form className="run-dialog" onSubmit={runProgram}>
                   <div className="run-main"><Icon src={`${I}/run.svg`} size={36}/><p>Type the name of a program, folder, document, project, or Internet resource, and NurbekOS will open it for you.</p></div>
-                  <label htmlFor={`run-${win.id}`}>Open:</label><input id={`run-${win.id}`} autoFocus value={runCommand} onChange={event => setRunCommand(event.target.value)} placeholder="projects, cv, github, https://..." aria-describedby={runError ? `run-error-${win.id}` : undefined}/>
+                  <label htmlFor={`run-${win.id}`}>Open:</label><input id={`run-${win.id}`} autoFocus value={runCommand} onChange={event => setRunCommand(event.target.value)} placeholder="projects, cv, telegram, linkedin..." aria-describedby={runError ? `run-error-${win.id}` : undefined}/>
                   {runError && <div className="run-error" id={`run-error-${win.id}`} role="alert">{runError}</div>}
                   <div className="run-actions"><button type="submit" className="xp-button">OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button><button type="button" className="xp-button" onClick={() => {close(win.id); launch('search', 'Search Results');}}>Browse...</button></div>
                 </form>
@@ -1252,7 +1254,7 @@ export default function Home() {
             <button type="button" onClick={() => launch('terminal', 'NurbekOS Terminal')}><Icon src={`${I}/cmd.svg`} size={27}/><b>Terminal</b></button>
             <button type="button" onClick={() => launch('badges', 'NurbekOS Achievements')}><Icon src={`${I}/badge.svg`} size={27}/><b>NurbekOS Achievements</b></button>
             <div className="start-separator"/>
-            <a href={profile.links.github} target="_blank" rel="noopener noreferrer"><Icon src={`${I}/internet-explorer.svg`} size={27}/><b>GitHub</b></a>
+            <a href={profile.links.telegram} target="_blank" rel="noopener noreferrer"><Icon src={`${I}/internet-explorer.svg`} size={27}/><b>Telegram</b></a><a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer"><Icon src={`${I}/internet-explorer.svg`} size={27}/><b>LinkedIn</b></a>
             <a href="/cv.pdf" target="_blank" rel="noopener noreferrer"><Icon src={`${I}/text-file.svg`} size={27}/><b>CV / Resume</b></a>
           </div>
         </div>
