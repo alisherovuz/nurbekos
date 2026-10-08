@@ -251,7 +251,7 @@ export default function Home() {
       setPhotoRotation(0);
     }
     const id = `win-${++serial}`;
-    const size = {
+    const windowSizes: Partial<Record<AppId, [number, number]>> = {
       browser: [960, 650],
       gallery: [850, 590],
       photoViewer: [900, 650],
@@ -261,7 +261,8 @@ export default function Home() {
       projectDetail: [840, 610],
       properties: [570, 520],
       experienceProperties: [610, 545],
-    }[app] || [760, 540];
+    };
+    const size = windowSizes[app] ?? [760, 540];
     setWindows(current => [...current, {
       id,
       app,
