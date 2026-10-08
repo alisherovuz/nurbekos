@@ -846,7 +846,7 @@ export default function Home() {
                     {(['general', 'computer', 'portfolio', 'links'] as AboutTab[]).map(tab => <button type="button" role="tab" aria-selected={aboutTab === tab} key={tab} className={aboutTab === tab ? 'active' : ''} onClick={() => setAboutTab(tab)}>{tab === 'computer' ? 'Computer Name' : tab[0].toUpperCase() + tab.slice(1)}</button>)}
                   </div>
                   {aboutTab === 'general' && <div className="system-tab general-tab">
-                    <div className="system-logo"><span>nurbek</span><b>OS</b><small>XP Portfolio Edition</small></div>
+                    <div className="system-profile-photo"><img src={profile.photo} alt={`${profile.name} profile`} /></div>
                     <div className="system-copy"><h2>{profile.name}</h2><p className="system-headline">{profile.headline}</p><p>{profile.bio}</p><div className="system-rule"/><dl><dt>Registered to:</dt><dd>{profile.name}</dd><dt>Location:</dt><dd>{profile.location}</dd><dt>Focus:</dt><dd>{profile.focus}</dd></dl></div>
                   </div>}
                   {aboutTab === 'computer' && <div className="system-tab"><fieldset><legend>Computer description</legend><p>NurbekOS — interactive portfolio and project archive.</p></fieldset><fieldset><legend>Full computer name</legend><dl className="system-fields"><dt>Computer name:</dt><dd>{profile.computerName}</dd><dt>Workgroup:</dt><dd>{profile.workgroup}</dd></dl></fieldset><p className="system-note">This portfolio behaves like a desktop so visitors can explore work as files, folders and applications rather than as one long page.</p></div>}
@@ -886,7 +886,7 @@ export default function Home() {
       </div>}
 
       {start && <section className="start-menu" onClick={event => event.stopPropagation()} aria-label="Start menu">
-        <header className="start-header"><Icon src={`${I}/user.svg`} size={48}/><span>{profile.name}</span></header>
+        <header className="start-header"><img className="start-profile-photo" src={profile.photo} alt={`${profile.name} profile`} /><span>{profile.name}</span></header>
         <div className="start-columns">
           <div>
             <button type="button" onClick={() => launch('projects')}><Icon src={`${I}/my-projects.svg`} size={34}/><span><b>My Projects</b><small>Products, experiments & archives</small></span></button>

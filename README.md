@@ -1,4 +1,4 @@
-# NurbekOS v4.2
+# NurbekOS v4.3 v4.2
 
 Windows XP-inspired interactive portfolio for Nurbek Alisherov.
 
@@ -56,3 +56,8 @@ The main content registry is `app/data.ts`:
 Push to the GitHub repository connected to Vercel. Vercel should redeploy automatically.
 
 See `PRODUCTION_AUDIT.md` before deploying.
+
+
+## v4.3
+- Added Nurbek's real profile photo to the Start menu and System Properties.
+- Added the profile portrait to My Pictures → General Gallery.

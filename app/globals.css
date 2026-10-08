@@ -254,10 +254,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .system-properties{padding:10px 13px}
 .system-tab{padding:6px 8px 12px;line-height:17px}
 .general-tab{display:grid;grid-template-columns:180px 1fr;gap:18px}
-.system-logo{height:160px;background:linear-gradient(135deg,#184caa,#5d99e7);color:#fff;border:1px solid #0c397f;box-shadow:inset 0 0 0 1px #8bb6ed;display:flex;align-items:flex-end;justify-content:center;padding:18px 10px;position:relative;font-size:24px;text-shadow:1px 1px #123c75}
-.system-logo span{font-weight:bold}
-.system-logo b{color:#ef7b41;font-size:29px;margin-left:2px}
-.system-logo small{position:absolute;bottom:6px;right:10px;font-size:9px;letter-spacing:1px;color:#e9f0ff}
+.system-profile-photo{height:160px;background:#d8e8fb;border:1px solid #0c397f;box-shadow:inset 0 0 0 1px #fff;padding:5px;overflow:hidden}
+.system-profile-photo img{width:100%;height:100%;display:block;object-fit:cover;object-position:center 35%}
 .system-copy h2{margin:0 0 2px;font-size:18px;color:#174984}
 .system-headline{margin:0 0 9px;color:#555}
 .system-copy p{line-height:17px}
@@ -303,7 +301,7 @@ kbd{font-family:inherit;border:1px solid #999;border-bottom-width:2px;background
 
 .start-menu{position:absolute;z-index:199;bottom:34px;left:0;width:min(420px,95vw);background:#ece9d8;border:2px solid #2a65c7;border-radius:7px 7px 0 0;box-shadow:2px -2px 12px #1b427f80;overflow:hidden}
 .start-header{height:66px;background:linear-gradient(#3f8ae6,#1762c9);display:flex;align-items:center;gap:10px;padding:9px;color:#fff;font-size:16px;text-shadow:1px 1px #174382}
-.start-header .xp-icon{border:2px solid #fff;border-radius:3px;box-shadow:1px 1px 2px #174382}
+.start-profile-photo{width:48px;height:48px;object-fit:cover;object-position:center 35%;border:2px solid #fff;border-radius:4px;box-shadow:1px 1px 2px #174382;background:#fff}
 .start-columns{display:grid;grid-template-columns:1.08fr .92fr;min-height:270px}
 .start-columns>div{padding:8px}
 .start-columns>div:first-child{background:#fff}
@@ -389,7 +387,7 @@ kbd{font-family:inherit;border:1px solid #999;border-bottom-width:2px;background
   .search-companion input,.search-companion select{width:100%;margin:0}
   .search-tip{display:none}
   .general-tab{grid-template-columns:1fr}
-  .system-logo{height:100px}
+  .system-profile-photo{height:100px}
   .property-grid{grid-template-columns:80px 1fr}
   .start-menu{width:100vw;max-width:none}
   .start-columns{grid-template-columns:1fr 1fr;min-height:235px}
@@ -411,7 +409,7 @@ kbd{font-family:inherit;border:1px solid #999;border-bottom-width:2px;background
   .explorer-files,.photo-grid,.inline-photo-grid{grid-template-columns:1fr}
   .start-columns{grid-template-columns:1fr 1fr}
   .start-header{height:56px}
-  .start-header .xp-icon{width:40px;height:40px}
+  .start-profile-photo{width:40px;height:40px}
   .start-columns>div{padding:5px}
   .start-columns .xp-icon{width:25px!important;height:25px!important}
   .system-properties,.properties-body{padding:7px}

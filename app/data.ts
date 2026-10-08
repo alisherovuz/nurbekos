@@ -40,7 +40,7 @@ export type Photo = {
   id: string;
   title: string;
   album: string;
-  section: 'Projects' | 'Achievements' | 'Acceptances' | 'Experiences & Events';
+  section: 'Projects' | 'Achievements' | 'Acceptances' | 'Experiences & Events' | 'General Gallery';
   src: string;
   date: string;
   caption: string;
@@ -57,6 +57,7 @@ export const profile = {
   location: 'Uzbekistan',
   headline: 'AI builder, entrepreneur, and student',
   focus: 'Artificial Intelligence · Education · Startups',
+  photo: '/profile/nurbek-alisherov.jpg',
   bio: 'I build technology and education projects, lead youth communities, and experiment with AI products. NurbekOS is a portfolio designed like the computer I wish every portfolio could be: something you can explore instead of scroll through.',
   computerName: 'NURBEK-XP',
   workgroup: 'BUILDERS',
@@ -323,6 +324,17 @@ export const awards: Award[] = [
 ];
 
 export const photos: Photo[] = [
+  {
+    id: 'general-gallery-main-profile',
+    title: 'Nurbek Alisherov',
+    album: 'Portraits',
+    section: 'General Gallery',
+    src: '/profile/nurbek-alisherov.jpg',
+    date: 'Profile',
+    caption: 'Nurbek Alisherov with his laptop.',
+    alt: 'Nurbek Alisherov sitting behind a laptop',
+    kind: 'photo',
+  },
   {
     id: 'achievements-100m-uzs-grant-01-grant-award',
     title: '100M UZS grant award',
