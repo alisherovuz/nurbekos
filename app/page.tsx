@@ -608,7 +608,7 @@ export default function Home() {
       setTerminalLines([]); setTerminalInput(''); return;
     }
     if (command === 'help') output.push('Commands: whoami, projects, experience, awards, photos, games, snake, minesweeper, badges, telegram, linkedin, github, cv, date, clear');
-    else if (command === 'whoami') output.push(`${profile.name} — ${profile.title}`);
+    else if (command === 'whoami') output.push(`${profile.name} — ${profile.headline}`);
     else if (command === 'date') output.push(new Date().toString());
     else if (['projects','experience','awards','photos','games','snake','minesweeper','badges'].includes(command)) {
       const actions: Record<string, () => void> = {
