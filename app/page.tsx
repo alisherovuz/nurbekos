@@ -804,7 +804,7 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>v4.5 portfolio edition</small></div>
+      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>portfolio edition</small></div>
       <div className="desktop-hint" aria-hidden="true">Double-click an icon · F3 or / to search</div>
 
       {windows.filter(win => !win.minimized).map((win, index) => {
