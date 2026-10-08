@@ -1,13 +1,18 @@
+export type ProjectStatus = 'active' | 'archived' | 'experiment';
+export type CoverTone = 'blue' | 'green' | 'orange' | 'purple' | 'red' | 'teal';
+
 export type Project = {
   name: string;
   kind: string;
   url: string;
   year: string;
-  status: 'active' | 'archived' | 'experiment';
+  status: ProjectStatus;
   description: string;
   detail: string;
   tech: string;
   role?: string;
+  featured?: boolean;
+  coverTone: CoverTone;
 };
 
 export type Experience = {
@@ -30,14 +35,42 @@ export type Award = {
   description: string;
 };
 
+export type Photo = {
+  id: string;
+  title: string;
+  album: string;
+  src: string;
+  date: string;
+  caption: string;
+  alt: string;
+};
+
+export const profile = {
+  name: 'Nurbek Alisherov',
+  handle: 'uzalisherov',
+  location: 'Uzbekistan',
+  headline: 'AI builder, entrepreneur, and student',
+  focus: 'Artificial Intelligence · Education · Startups',
+  bio: 'I build technology and education projects, lead youth communities, and experiment with AI products. NurbekOS is a portfolio designed like the computer I wish every portfolio could be: something you can explore instead of scroll through.',
+  computerName: 'NURBEK-XP',
+  workgroup: 'BUILDERS',
+  links: {
+    website: 'https://alisherov.com',
+    github: 'https://github.com/alisherovuz',
+    linkedin: 'https://www.linkedin.com/in/uzalisherov/',
+  },
+};
+
 export const projects: Project[] = [
   {
-    name: 'EduGrants',
+    name: 'EduGrands',
     kind: 'EdTech platform',
     url: 'https://edugrants.uz',
     year: 'Aug 2023 — present',
     status: 'active',
     role: 'Founder & CEO',
+    featured: true,
+    coverTone: 'blue',
     description: 'A scholarship-discovery platform helping students in Uzbekistan find verified international opportunities.',
     detail: 'The project grew into a web platform, Telegram community and EduCast interview series. Recent public updates place the ecosystem at 50,000+ users.',
     tech: 'Product · Community · Partnerships · Web',
@@ -49,6 +82,8 @@ export const projects: Project[] = [
     year: 'Sept 2026 — present',
     status: 'active',
     role: 'Co-Founder & CEO',
+    featured: true,
+    coverTone: 'purple',
     description: 'An AI virtual laboratory that turns textbook pages into interactive 3D experiments with an Uzbek AI tutor.',
     detail: 'Built from scratch in 72 hours with JaydariTech and won 1st place in the EdTech track at the National AI Hackathon.',
     tech: 'AI · EdTech · 3D · Product',
@@ -59,6 +94,8 @@ export const projects: Project[] = [
     url: 'https://atlon.uz',
     year: 'Jul 2026 — present',
     status: 'active',
+    featured: true,
+    coverTone: 'green',
     description: 'A youth platform centered on leadership, volunteering and real-world project experience.',
     detail: 'LinkedIn lists 500+ participants, 50+ volunteers, 12 cities and 20+ events across its programs.',
     tech: 'Youth · Leadership · Community · Events',
@@ -70,6 +107,8 @@ export const projects: Project[] = [
     year: 'Dec 2024 — present',
     status: 'active',
     role: 'Co-Founder & CTO',
+    featured: true,
+    coverTone: 'teal',
     description: 'A platform connecting ambitious students with mentors who have won major international scholarships.',
     detail: 'Built with a four-person team; the platform reached 3,000+ users and facilitated hundreds of mentoring sessions.',
     tech: 'Web · Mentorship · Product · AI',
@@ -81,6 +120,7 @@ export const projects: Project[] = [
     year: 'Jul 2025 — Dec 2025',
     status: 'archived',
     role: 'Co-Founder & Media Director',
+    coverTone: 'orange',
     description: 'A national competition format where student teams solve real IT cases and defend working solutions.',
     detail: 'Organized 15 competitions across 10 regions, engaging 1,000+ students and partnering with industry organizations.',
     tech: 'Community · Events · Partnerships · Media',
@@ -91,6 +131,7 @@ export const projects: Project[] = [
     url: '',
     year: 'Feb 2026',
     status: 'experiment',
+    coverTone: 'red',
     description: 'A playful Telegram bot for personalized friendship quizzes, anonymous messages and compatibility checks.',
     detail: 'Designed as a viral-friendly social experiment with quiz sharing and leaderboards.',
     tech: 'Telegram bot · Viral loops · Product experiment',
@@ -101,6 +142,7 @@ export const projects: Project[] = [
     url: '',
     year: 'Jan 2026',
     status: 'experiment',
+    coverTone: 'purple',
     description: 'A museum of quotes that lets visitors browse curated inspiration based on their mood.',
     detail: 'Built as a polished interactive experience with animation, navigation and an admin toolkit.',
     tech: 'Web · UI/UX · Content · Experiment',
@@ -112,6 +154,7 @@ export const projects: Project[] = [
     year: 'Jun 2024 — Jul 2024',
     status: 'archived',
     role: 'AI Researcher & Engineer',
+    coverTone: 'blue',
     description: 'An AI-powered attendance system developed at New Uzbekistan University.',
     detail: 'The prototype reduced educators’ manual record-keeping by about four hours per month during the pilot.',
     tech: 'Computer vision · AI · Prototype',
@@ -122,6 +165,7 @@ export const projects: Project[] = [
     url: '',
     year: 'Feb 2024 — Jul 2024',
     status: 'archived',
+    coverTone: 'teal',
     description: 'A hospital service booking project for consultations and operations.',
     detail: 'Built with a 14-person team of programmers, designers and researchers; the project was later stopped because of financial constraints.',
     tech: 'Web · Health-tech · Team project',
@@ -132,6 +176,7 @@ export const projects: Project[] = [
     url: '',
     year: 'Feb 2024 — Apr 2024',
     status: 'archived',
+    coverTone: 'orange',
     description: 'A platform for creators to upload, showcase and share their work with a broader audience.',
     detail: 'An early community-building and product experiment focused on Uzbek creators.',
     tech: 'Web · Creators · Community',
@@ -142,6 +187,7 @@ export const projects: Project[] = [
     url: '',
     year: 'Early project',
     status: 'experiment',
+    coverTone: 'red',
     description: 'A platform concept for early-stage founders to collaborate and access startup opportunities.',
     detail: 'Focused on structured collaboration, startup team formation and opportunity discovery.',
     tech: 'Startups · Collaboration · Product concept',
@@ -152,6 +198,7 @@ export const projects: Project[] = [
     url: '',
     year: 'Dec 2024',
     status: 'archived',
+    coverTone: 'green',
     description: 'A business project created for Target International School’s national business championship.',
     detail: 'Won 1st place among five school branches; Nurbek led strategy, development and presentation.',
     tech: 'Business · Product · Pitching',
@@ -160,8 +207,8 @@ export const projects: Project[] = [
 
 export const experiences: Experience[] = [
   {
-    id: 'edugrants',
-    organization: 'EduGrants',
+    id: 'edugrands',
+    organization: 'EduGrands',
     role: 'Founder & CEO',
     period: 'Aug 2023 — present',
     location: 'Uzbekistan',
@@ -169,7 +216,7 @@ export const experiences: Experience[] = [
     logo: 'https://edugrants.uz/logo.jpg',
     description: 'Founded and scaled a scholarship-discovery platform and community connecting young people with verified international opportunities.',
     highlights: ['50,000+ users across the ecosystem', '$10,000+ revenue from advertising and partnerships', 'EduCast interview series and nationwide scholarship marathons'],
-    relatedProject: 'EduGrants',
+    relatedProject: 'EduGrands',
   },
   {
     id: 'empira',
@@ -262,4 +309,25 @@ export const awards: Award[] = [
   {year: '2023', name: 'Top 100 Student of Uzbekistan', issuer: 'Ministry of Education', description: 'Recognized nationally for academics, leadership and contributions to education and tech.'},
   {year: '2023', name: 'Kelajak Yoshlari', issuer: 'Najot Ta’lim & Cambridge Learning Centre', description: 'Won full scholarships through the national selection programme.'},
   {year: '2021', name: 'Khiso Olympiad — Regional 1st Place', description: 'Placed first in the regional stage.'},
+];
+
+export const photos: Photo[] = [
+  {
+    id: 'nurbekos-desktop',
+    title: 'NurbekOS desktop preview',
+    album: 'NurbekOS build',
+    src: '/photos/nurbekos-desktop.webp',
+    date: 'Oct 2026',
+    caption: 'An early local build of the Windows XP-inspired NurbekOS desktop.',
+    alt: 'NurbekOS desktop running in Chrome with Windows XP-style icons and taskbar.',
+  },
+  {
+    id: 'nurbekos-dev',
+    title: 'Building NurbekOS',
+    album: 'NurbekOS build',
+    src: '/photos/nurbekos-dev.webp',
+    date: 'Oct 2026',
+    caption: 'Development session while getting the original local build running.',
+    alt: 'Visual Studio Code showing the NurbekOS project and terminal during development.',
+  },
 ];
