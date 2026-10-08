@@ -21,7 +21,10 @@ type AppId =
   | 'search'
   | 'run'
   | 'games'
-  | 'snake';
+  | 'snake'
+  | 'minesweeper'
+  | 'terminal'
+  | 'badges';
 
 type WindowState = {
   id: string;
@@ -51,6 +54,39 @@ type SearchScope = 'all' | 'projects' | 'experience' | 'achievements' | 'picture
 
 type Point = {x: number; y: number};
 type Direction = 'up' | 'down' | 'left' | 'right';
+type MineCell = {mine: boolean; revealed: boolean; flagged: boolean; adjacent: number};
+type BadgeId = 'first-steps' | 'explorer' | 'photo-hunter' | 'snake-charmer' | 'mine-master' | 'power-user';
+type OsBadge = {id: BadgeId; name: string; description: string};
+
+const OS_BADGES: OsBadge[] = [
+  {id: 'first-steps', name: 'First Steps', description: 'Opened My Computer.'},
+  {id: 'explorer', name: 'Explorer', description: 'Explored My Projects.'},
+  {id: 'photo-hunter', name: 'Photo Hunter', description: 'Opened My Pictures.'},
+  {id: 'snake-charmer', name: 'Snake Charmer', description: 'Scored 50 points in Snake.'},
+  {id: 'mine-master', name: 'Mine Master', description: 'Cleared a Minesweeper board.'},
+  {id: 'power-user', name: 'Power User', description: 'Ran a command in NurbekOS Terminal.'},
+];
+
+const MINE_ROWS = 9;
+const MINE_COLS = 9;
+const MINE_COUNT = 10;
+
+function createMineBoard(): MineCell[] {
+  const total = MINE_ROWS * MINE_COLS;
+  const mines = new Set<number>();
+  while (mines.size < MINE_COUNT) mines.add(Math.floor(Math.random() * total));
+  return Array.from({length: total}, (_, index) => {
+    const row = Math.floor(index / MINE_COLS);
+    const col = index % MINE_COLS;
+    let adjacent = 0;
+    for (let dr = -1; dr <= 1; dr += 1) for (let dc = -1; dc <= 1; dc += 1) {
+      if (!dr && !dc) continue;
+      const rr = row + dr, cc = col + dc;
+      if (rr >= 0 && rr < MINE_ROWS && cc >= 0 && cc < MINE_COLS && mines.has(rr * MINE_COLS + cc)) adjacent += 1;
+    }
+    return {mine: mines.has(index), revealed: false, flagged: false, adjacent};
+  });
+}
 
 const SNAKE_COLS = 20;
 const SNAKE_ROWS = 15;
@@ -154,6 +190,14 @@ export default function Home() {
   const [snakeGameOver, setSnakeGameOver] = useState(false);
   const [snakeScore, setSnakeScore] = useState(0);
   const [snakeHighScore, setSnakeHighScore] = useState(0);
+  const [mineBoard, setMineBoard] = useState<MineCell[]>(() => createMineBoard());
+  const [mineGameOver, setMineGameOver] = useState(false);
+  const [mineWon, setMineWon] = useState(false);
+  const [mineFlagMode, setMineFlagMode] = useState(false);
+  const [terminalInput, setTerminalInput] = useState('');
+  const [terminalLines, setTerminalLines] = useState<string[]>(['NurbekOS Terminal [Version 4.5]', 'Type help for available commands.', '']);
+  const [unlockedBadges, setUnlockedBadges] = useState<BadgeId[]>([]);
+  const [badgeToast, setBadgeToast] = useState<OsBadge | null>(null);
 
   const drag = useRef<{id: string; startX: number; startY: number; x: number; y: number} | null>(null);
   const resize = useRef<{id: string; startX: number; startY: number; width: number; height: number} | null>(null);
@@ -268,6 +312,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('nurbekos-badges') || '[]') as BadgeId[];
+      setUnlockedBadges(saved.filter(id => OS_BADGES.some(badge => badge.id === id)));
+    } catch { setUnlockedBadges([]); }
+  }, []);
+
+  useEffect(() => {
+    if (snakeScore >= 50) unlockBadge('snake-charmer');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snakeScore]);
+
+  useEffect(() => {
     if (!snakeRunning || snakeGameOver) return;
     const timer = window.setInterval(() => {
       setSnake(current => {
@@ -345,6 +401,9 @@ export default function Home() {
   }, [searchQuery, searchScope]);
 
   function launch(app: AppId, title?: string, url?: string, project?: string, experience?: string, photo?: string, achievement?: string) {
+    if (app === 'about') unlockBadge('first-steps');
+    if (app === 'projects') unlockBadge('explorer');
+    if (app === 'gallery') unlockBadge('photo-hunter');
     setStart(false);
     setContext(null);
     setRunError('');
@@ -366,6 +425,9 @@ export default function Home() {
       experienceProperties: [610, 545],
       games: [720, 520],
       snake: [680, 620],
+      minesweeper: [520, 590],
+      terminal: [760, 500],
+      badges: [650, 480],
     };
     const size = windowSizes[app] ?? [760, 540];
     setWindows(current => [...current, {
@@ -464,6 +526,102 @@ export default function Home() {
     else if (result.type === 'achievements' && result.achievement) openAchievement(result.achievement);
   }
 
+  function unlockBadge(id: BadgeId) {
+    const badge = OS_BADGES.find(item => item.id === id);
+    if (!badge) return;
+    setUnlockedBadges(current => {
+      if (current.includes(id)) return current;
+      const next = [...current, id];
+      window.localStorage.setItem('nurbekos-badges', JSON.stringify(next));
+      setBadgeToast(badge);
+      window.setTimeout(() => setBadgeToast(currentToast => currentToast?.id === id ? null : currentToast), 3200);
+      return next;
+    });
+  }
+
+  function resetMinesweeper() {
+    setMineBoard(createMineBoard());
+    setMineGameOver(false);
+    setMineWon(false);
+    setMineFlagMode(false);
+  }
+
+  function openMinesweeper() {
+    const existing = windows.find(win => win.app === 'minesweeper');
+    if (existing) { focus(existing.id); return; }
+    resetMinesweeper();
+    launch('minesweeper', 'Minesweeper.exe');
+  }
+
+  function revealMineCell(index: number) {
+    if (mineGameOver || mineWon) return;
+    setMineBoard(current => {
+      const next = current.map(cell => ({...cell}));
+      const cell = next[index];
+      if (!cell || cell.flagged || cell.revealed) return current;
+      if (mineFlagMode) { cell.flagged = !cell.flagged; return next; }
+      if (cell.mine) {
+        next.forEach(item => { if (item.mine) item.revealed = true; });
+        setMineGameOver(true);
+        return next;
+      }
+      const queue = [index];
+      const seen = new Set<number>();
+      while (queue.length) {
+        const currentIndex = queue.shift()!;
+        if (seen.has(currentIndex)) continue;
+        seen.add(currentIndex);
+        const target = next[currentIndex];
+        if (!target || target.flagged || target.mine) continue;
+        target.revealed = true;
+        if (target.adjacent === 0) {
+          const row = Math.floor(currentIndex / MINE_COLS), col = currentIndex % MINE_COLS;
+          for (let dr = -1; dr <= 1; dr += 1) for (let dc = -1; dc <= 1; dc += 1) {
+            const rr = row + dr, cc = col + dc;
+            if (rr >= 0 && rr < MINE_ROWS && cc >= 0 && cc < MINE_COLS) queue.push(rr * MINE_COLS + cc);
+          }
+        }
+      }
+      const safeRevealed = next.filter(item => !item.mine && item.revealed).length;
+      if (safeRevealed === MINE_ROWS * MINE_COLS - MINE_COUNT) {
+        setMineWon(true);
+        next.forEach(item => { if (item.mine) item.flagged = true; });
+        unlockBadge('mine-master');
+      }
+      return next;
+    });
+  }
+
+  function flagMineCell(index: number) {
+    if (mineGameOver || mineWon) return;
+    setMineBoard(current => current.map((cell, i) => i === index && !cell.revealed ? {...cell, flagged: !cell.flagged} : cell));
+  }
+
+  function runTerminalCommand(event: FormEvent) {
+    event.preventDefault();
+    const raw = terminalInput.trim();
+    if (!raw) return;
+    unlockBadge('power-user');
+    const command = raw.toLowerCase();
+    const output: string[] = [`C:\NurbekOS> ${raw}`];
+    if (command === 'clear' || command === 'cls') {
+      setTerminalLines([]); setTerminalInput(''); return;
+    }
+    if (command === 'help') output.push('Commands: whoami, projects, experience, awards, photos, games, snake, minesweeper, badges, github, cv, date, clear');
+    else if (command === 'whoami') output.push(`${profile.name} — ${profile.title}`);
+    else if (command === 'date') output.push(new Date().toString());
+    else if (['projects','experience','awards','photos','games','snake','minesweeper','badges'].includes(command)) {
+      const actions: Record<string, () => void> = {
+        projects: () => launch('projects'), experience: () => launch('experience'), awards: () => launch('achievements'), photos: () => launch('gallery'), games: () => launch('games'), snake: openSnake, minesweeper: openMinesweeper, badges: () => launch('badges', 'NurbekOS Achievements'),
+      };
+      actions[command](); output.push(`Opening ${raw}...`);
+    } else if (command === 'github') { launch('browser', 'GitHub - Microsoft Internet Explorer', profile.links.github); output.push('Opening GitHub...'); }
+    else if (command === 'cv') { window.open('/cv.pdf', '_blank', 'noopener,noreferrer'); output.push('Opening CV...'); }
+    else output.push(`'${raw}' is not recognized as a command. Type help.`);
+    setTerminalLines(lines => [...lines, ...output, '']);
+    setTerminalInput('');
+  }
+
   function resetSnake(startImmediately = true) {
     setSnake(INITIAL_SNAKE);
     setSnakeFood(randomFood(INITIAL_SNAKE));
@@ -508,16 +666,17 @@ export default function Home() {
       'recycle bin': 'recycle',
       search: 'search',
       games: 'games',
+      terminal: 'terminal',
+      cmd: 'terminal',
+      badges: 'badges',
     };
 
     if (aliases[normalized]) {
       launch(aliases[normalized]);
       return;
     }
-    if (normalized === 'snake' || normalized === 'snake.exe') {
-      openSnake();
-      return;
-    }
+    if (normalized === 'snake' || normalized === 'snake.exe') { openSnake(); return; }
+    if (normalized === 'minesweeper' || normalized === 'minesweeper.exe' || normalized === 'mines') { openMinesweeper(); return; }
     if (normalized === 'cv' || normalized === 'resume' || normalized === 'cv.pdf') {
       const tab = window.open('/cv.pdf', '_blank', 'noopener,noreferrer');
       if (tab) tab.opener = null;
@@ -564,6 +723,9 @@ export default function Home() {
     if (win.app === 'run') return `${I}/run.svg`;
     if (win.app === 'games') return `${I}/games.svg`;
     if (win.app === 'snake') return `${I}/snake.svg`;
+    if (win.app === 'minesweeper') return `${I}/minesweeper.svg`;
+    if (win.app === 'terminal') return `${I}/cmd.svg`;
+    if (win.app === 'badges') return `${I}/badge.svg`;
     return `${I}/folder.svg`;
   }
 
@@ -577,6 +739,8 @@ export default function Home() {
     if (win.app === 'search') return 'Search Results';
     if (win.app === 'games') return 'C:\\Documents and Settings\\Nurbek\\Games';
     if (win.app === 'snake') return 'C:\\Documents and Settings\\Nurbek\\Games\\Snake.exe';
+    if (win.app === 'minesweeper') return 'C:\\Documents and Settings\\Nurbek\\Games\\Minesweeper.exe';
+    if (win.app === 'badges') return 'C:\\Documents and Settings\\Nurbek\\NurbekOS Achievements';
     return `C:\\Documents and Settings\\Nurbek\\${win.title}`;
   }
 
@@ -598,7 +762,7 @@ export default function Home() {
     if (window.matchMedia('(pointer: coarse)').matches) action();
   }
 
-  const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'achievementDetail', 'gallery', 'documents', 'games', 'recycle', 'browser', 'search'];
+  const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'achievementDetail', 'gallery', 'documents', 'games', 'badges', 'recycle', 'browser', 'search'];
 
   return (
     <main
@@ -610,7 +774,7 @@ export default function Home() {
 
       {boot && (
         <div className="boot" role="status" aria-label="NurbekOS is starting">
-          <div className="boot-logo"><span className="boot-word">nurbek</span><span>OS</span><small>portfolio edition v4.4</small></div>
+          <div className="boot-logo"><span className="boot-word">nurbek</span><span>OS</span><small>portfolio edition v4.5</small></div>
           <div className="boot-progress" aria-hidden="true"><span/></div>
           <button type="button" onClick={() => setBoot(false)}>Skip startup ›</button>
         </div>
@@ -638,7 +802,7 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>v4.4 portfolio edition</small></div>
+      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>v4.5 portfolio edition</small></div>
       <div className="desktop-hint" aria-hidden="true">Double-click an icon · F3 or / to search</div>
 
       {windows.filter(win => !win.minimized).map((win, index) => {
@@ -919,12 +1083,11 @@ export default function Home() {
 
               {win.app === 'games' && (
                 <div className={`explorer-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
-                  {foldersPane && <aside className="explorer-sidebar"><div className="task-panel"><strong>Game Tasks</strong><button type="button" onClick={openSnake}>Play Snake</button></div><div className="task-panel"><strong>Details</strong><p><b>Games</b><br/>1 installed game<br/>Classic NurbekOS entertainment</p></div></aside>}
+                  {foldersPane && <aside className="explorer-sidebar"><div className="task-panel"><strong>Game Tasks</strong><button type="button" onClick={openSnake}>Play Snake</button><button type="button" onClick={openMinesweeper}>Play Minesweeper</button></div><div className="task-panel"><strong>Details</strong><p><b>Games</b><br/>2 installed games<br/>Classic NurbekOS entertainment</p></div></aside>}
                   <div className="explorer-main">
                     <div className="explorer-files game-files">
-                      <button type="button" className="file-item game-file" onDoubleClick={openSnake} onClick={() => activateOnTouch(openSnake)}>
-                        <Icon src={`${I}/snake.svg`} size={48}/><span className="file-copy"><span className="file-name">Snake.exe</span><small>Application · Classic arcade game</small><small>Arrow keys / WASD</small></span>
-                      </button>
+                      <button type="button" className="file-item game-file" onDoubleClick={openSnake} onClick={() => activateOnTouch(openSnake)}><Icon src={`${I}/snake.svg`} size={48}/><span className="file-copy"><span className="file-name">Snake.exe</span><small>Application · Classic arcade game</small><small>Arrow keys / WASD</small></span></button>
+                      <button type="button" className="file-item game-file" onDoubleClick={openMinesweeper} onClick={() => activateOnTouch(openMinesweeper)}><Icon src={`${I}/minesweeper.svg`} size={48}/><span className="file-copy"><span className="file-name">Minesweeper.exe</span><small>Application · Windows classic</small><small>10 mines · 9 × 9 board</small></span></button>
                     </div>
                   </div>
                 </div>
@@ -954,6 +1117,25 @@ export default function Home() {
                   </div>
                   <div className="snake-help">Arrow keys / WASD to move · Space to pause · Eat the red apple</div>
                 </div>
+              )}
+
+              {win.app === 'minesweeper' && (
+                <div className="mines-app">
+                  <div className="mines-toolbar"><span className="mine-counter">💣 {MINE_COUNT - mineBoard.filter(cell => cell.flagged).length}</span><button type="button" className="mine-face" onClick={resetMinesweeper} aria-label="New game">{mineGameOver ? '😵' : mineWon ? '😎' : '🙂'}</button><button type="button" className={`xp-button ${mineFlagMode ? 'pressed' : ''}`} onClick={() => setMineFlagMode(value => !value)}>🚩 Flag</button></div>
+                  <div className="mine-board" role="grid" aria-label="Minesweeper board">{mineBoard.map((cell, index) => <button type="button" key={index} role="gridcell" className={`mine-cell ${cell.revealed ? 'revealed' : ''} n${cell.adjacent}`} onClick={() => revealMineCell(index)} onContextMenu={event => {event.preventDefault(); flagMineCell(index);}} aria-label={cell.revealed ? cell.mine ? 'Mine' : `${cell.adjacent} adjacent mines` : cell.flagged ? 'Flagged cell' : 'Hidden cell'}>{cell.revealed ? cell.mine ? '💣' : cell.adjacent || '' : cell.flagged ? '🚩' : ''}</button>)}</div>
+                  <div className="mines-help">Click to reveal · Right-click or use Flag mode · Clear all safe cells</div>
+                </div>
+              )}
+
+              {win.app === 'terminal' && (
+                <div className="terminal-app" onClick={() => document.getElementById(`terminal-${win.id}`)?.focus()}>
+                  <div className="terminal-output" aria-live="polite">{terminalLines.map((line, index) => <div key={`${index}-${line}`}>{line || ' '}</div>)}</div>
+                  <form className="terminal-prompt" onSubmit={runTerminalCommand}><span>C:\NurbekOS&gt;</span><input id={`terminal-${win.id}`} autoFocus value={terminalInput} onChange={event => setTerminalInput(event.target.value)} aria-label="Terminal command" autoComplete="off" spellCheck={false}/></form>
+                </div>
+              )}
+
+              {win.app === 'badges' && (
+                <div className="badges-app"><div className="badges-summary"><Icon src={`${I}/badge.svg`} size={52}/><div><b>NurbekOS Achievements</b><span>{unlockedBadges.length} of {OS_BADGES.length} unlocked</span></div></div><div className="badges-grid">{OS_BADGES.map(badge => { const unlocked = unlockedBadges.includes(badge.id); return <div className={`badge-card ${unlocked ? 'unlocked' : 'locked'}`} key={badge.id}><div className="badge-medal">{unlocked ? '★' : '?'}</div><div><b>{unlocked ? badge.name : 'Locked'}</b><span>{unlocked ? badge.description : 'Keep exploring NurbekOS to unlock this achievement.'}</span></div></div>; })}</div></div>
               )}
 
               {win.app === 'documents' && (
@@ -1017,7 +1199,7 @@ export default function Home() {
                     <div className="system-copy"><h2>{profile.name}</h2><p className="system-headline">{profile.headline}</p><p>{profile.bio}</p><div className="system-rule"/><dl><dt>Registered to:</dt><dd>{profile.name}</dd><dt>Location:</dt><dd>{profile.location}</dd><dt>Focus:</dt><dd>{profile.focus}</dd></dl></div>
                   </div>}
                   {aboutTab === 'computer' && <div className="system-tab"><fieldset><legend>Computer description</legend><p>NurbekOS — interactive portfolio and project archive.</p></fieldset><fieldset><legend>Full computer name</legend><dl className="system-fields"><dt>Computer name:</dt><dd>{profile.computerName}</dd><dt>Workgroup:</dt><dd>{profile.workgroup}</dd></dl></fieldset><p className="system-note">This portfolio behaves like a desktop so visitors can explore work as files, folders and applications rather than as one long page.</p></div>}
-                  {aboutTab === 'portfolio' && <div className="system-tab portfolio-tab"><div className="setting-row"><span><b>Projects</b><small>{projects.length} projects and experiments</small></span><button type="button" className="xp-button" onClick={() => launch('projects')}>Open</button></div><div className="setting-row"><span><b>Experience</b><small>{experiences.length} roles and organizations</small></span><button type="button" className="xp-button" onClick={() => launch('experience')}>Open</button></div><div className="setting-row"><span><b>Achievements</b><small>{awards.length} awards and recognitions</small></span><button type="button" className="xp-button" onClick={() => launch('achievements')}>Open</button></div><div className="setting-row"><span><b>Pictures</b><small>{photos.length} images currently installed</small></span><button type="button" className="xp-button" onClick={() => launch('gallery')}>Open</button></div><div className="setting-row"><span><b>Games</b><small>Snake.exe installed</small></span><button type="button" className="xp-button" onClick={() => launch('games')}>Open</button></div></div>}
+                  {aboutTab === 'portfolio' && <div className="system-tab portfolio-tab"><div className="setting-row"><span><b>Projects</b><small>{projects.length} projects and experiments</small></span><button type="button" className="xp-button" onClick={() => launch('projects')}>Open</button></div><div className="setting-row"><span><b>Experience</b><small>{experiences.length} roles and organizations</small></span><button type="button" className="xp-button" onClick={() => launch('experience')}>Open</button></div><div className="setting-row"><span><b>Achievements</b><small>{awards.length} awards and recognitions</small></span><button type="button" className="xp-button" onClick={() => launch('achievements')}>Open</button></div><div className="setting-row"><span><b>Pictures</b><small>{photos.length} images currently installed</small></span><button type="button" className="xp-button" onClick={() => launch('gallery')}>Open</button></div><div className="setting-row"><span><b>Games</b><small>Snake.exe + Minesweeper.exe installed</small></span><button type="button" className="xp-button" onClick={() => launch('games')}>Open</button></div></div>}
                   {aboutTab === 'links' && <div className="system-tab links-tab"><p>Open Nurbek’s public profiles:</p><a href={profile.links.website} target="_blank" rel="noopener noreferrer">alisherov.com</a><a href={profile.links.github} target="_blank" rel="noopener noreferrer">GitHub / alisherovuz</a><a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn / uzalisherov</a><a href="/cv.pdf" target="_blank" rel="noopener noreferrer">Curriculum vitae (PDF)</a></div>}
                   <div className="properties-actions"><button type="button" className="xp-button" onClick={() => close(win.id)}>OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button><button type="button" className="xp-button" disabled>Apply</button></div>
                 </div>
@@ -1037,7 +1219,7 @@ export default function Home() {
               })()}
             </div>
 
-            {showStatus && <div className="status-bar"><span>{win.app === 'projects' ? `${projects.length} objects` : win.app === 'experience' ? `${experiences.length} objects` : win.app === 'gallery' ? `${win.project ? photos.filter(photo => photo.project === win.project).length : win.achievement ? photos.filter(photo => photo.achievement === win.achievement).length : photos.length} pictures` : win.app === 'achievements' ? `${awards.length} objects` : win.app === 'games' ? '1 object' : 'Ready'}</span><span>My Computer</span></div>}
+            {showStatus && <div className="status-bar"><span>{win.app === 'projects' ? `${projects.length} objects` : win.app === 'experience' ? `${experiences.length} objects` : win.app === 'gallery' ? `${win.project ? photos.filter(photo => photo.project === win.project).length : win.achievement ? photos.filter(photo => photo.achievement === win.achievement).length : photos.length} pictures` : win.app === 'achievements' ? `${awards.length} objects` : win.app === 'games' ? '2 objects' : win.app === 'badges' ? `${unlockedBadges.length} of ${OS_BADGES.length} unlocked` : 'Ready'}</span><span>My Computer</span></div>}
 
             {!win.maximized && !['run', 'about', 'properties', 'experienceProperties', 'photoViewer'].includes(win.app) && <button type="button" className="resize-handle" aria-label={`Resize ${win.title}`} onPointerDown={event => {event.stopPropagation(); resize.current = {id: win.id, startX: event.clientX, startY: event.clientY, width: win.width, height: win.height};}}/>}
           </section>
@@ -1060,13 +1242,15 @@ export default function Home() {
             <button type="button" onClick={() => launch('experience')}><Icon src={`${I}/folder.svg`} size={34}/><span><b>Work Experience</b><small>Roles, teams & organizations</small></span></button>
             <button type="button" onClick={() => launch('achievements')}><Icon src={`${I}/achievements.svg`} size={34}/><span><b>Achievements</b><small>Awards & recognitions</small></span></button>
             <button type="button" onClick={() => launch('gallery')}><Icon src={`${I}/my-pictures.svg`} size={34}/><span><b>My Pictures</b><small>Photos, projects & memories</small></span></button>
-            <button type="button" onClick={() => launch('games')}><Icon src={`${I}/games.svg`} size={34}/><span><b>Games</b><small>Snake.exe & classic fun</small></span></button>
+            <button type="button" onClick={() => launch('games')}><Icon src={`${I}/games.svg`} size={34}/><span><b>Games</b><small>Snake, Minesweeper & classic fun</small></span></button>
           </div>
           <div>
             <button type="button" onClick={() => launch('documents')}><Icon src={`${I}/my-documents.svg`} size={27}/><b>My Documents</b></button>
             <button type="button" onClick={() => launch('about')}><Icon src={`${I}/my-computer.svg`} size={27}/><b>My Computer</b></button>
             <button type="button" onClick={() => launch('search', 'Search Results')}><Icon src={`${I}/search.svg`} size={27}/><b>Search</b></button>
             <button type="button" onClick={() => launch('run', 'Run')}><Icon src={`${I}/run.svg`} size={27}/><b>Run...</b></button>
+            <button type="button" onClick={() => launch('terminal', 'NurbekOS Terminal')}><Icon src={`${I}/cmd.svg`} size={27}/><b>Terminal</b></button>
+            <button type="button" onClick={() => launch('badges', 'NurbekOS Achievements')}><Icon src={`${I}/badge.svg`} size={27}/><b>NurbekOS Achievements</b></button>
             <div className="start-separator"/>
             <a href={profile.links.github} target="_blank" rel="noopener noreferrer"><Icon src={`${I}/internet-explorer.svg`} size={27}/><b>GitHub</b></a>
             <a href="/cv.pdf" target="_blank" rel="noopener noreferrer"><Icon src={`${I}/text-file.svg`} size={27}/><b>CV / Resume</b></a>
@@ -1074,6 +1258,8 @@ export default function Home() {
         </div>
         <footer className="start-footer"><button type="button" onClick={() => {setWindows([]); setActive(''); setStart(false); setBoot(true); window.setTimeout(() => setBoot(false), 900);}}><span className="power-icon">↻</span> Restart NurbekOS</button></footer>
       </section>}
+
+      {badgeToast && <div className="badge-toast" role="status"><div className="badge-toast-icon">★</div><div><b>Achievement unlocked!</b><span>{badgeToast.name}</span></div></div>}
 
       <footer className="taskbar" onClick={event => event.stopPropagation()}>
         <button type="button" className={`start-button ${start ? 'pressed' : ''}`} onClick={() => {setStart(value => !value); setContext(null);}} aria-expanded={start}><span className="windows-mark" aria-hidden="true">▦</span><i>start</i></button>

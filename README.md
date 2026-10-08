@@ -61,3 +61,8 @@ See `PRODUCTION_AUDIT.md` before deploying.
 ## v4.4
 - Added Nurbek's real profile photo to the Start menu and System Properties.
 - Added the profile portrait to My Pictures → General Gallery.
+
+## v4.5 additions
+- Minesweeper.exe (9×9, 10 mines, right-click/Flag mode, mobile-friendly)
+- NurbekOS Terminal (`cmd`) with portfolio commands
+- Unlockable NurbekOS achievements stored locally in the browser
