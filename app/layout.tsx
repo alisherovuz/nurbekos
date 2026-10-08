@@ -2,7 +2,7 @@ import type {Metadata, Viewport} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'NurbekOS v4 — Nurbek Alisherov',
+  title: 'NurbekOS — Nurbek Alisherov',
   description: 'An interactive Windows XP-inspired portfolio for Nurbek Alisherov: projects, experience, achievements, photos and more.',
   applicationName: 'NurbekOS',
   authors: [{name: 'Nurbek Alisherov'}],
