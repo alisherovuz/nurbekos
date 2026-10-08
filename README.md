@@ -1,8 +1,8 @@
-# NurbekOS v4.3 v4.2
+# NurbekOS v4.4 v4.4
 
 Windows XP-inspired interactive portfolio for Nurbek Alisherov.
 
-## What changed in v4.2
+## What changed in v4.4
 
 - Added the real photo archive: 62 public-ready images and documents.
 - My Pictures now groups photos into Projects, Achievements, Acceptances, and Experiences & Events.
@@ -58,6 +58,6 @@ Push to the GitHub repository connected to Vercel. Vercel should redeploy automa
 See `PRODUCTION_AUDIT.md` before deploying.
 
 
-## v4.3
+## v4.4
 - Added Nurbek's real profile photo to the Start menu and System Properties.
 - Added the profile portrait to My Pictures → General Gallery.

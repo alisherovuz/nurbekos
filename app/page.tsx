@@ -19,7 +19,9 @@ type AppId =
   | 'recycle'
   | 'browser'
   | 'search'
-  | 'run';
+  | 'run'
+  | 'games'
+  | 'snake';
 
 type WindowState = {
   id: string;
@@ -47,6 +49,28 @@ type ViewMode = 'tiles' | 'details';
 type AboutTab = 'general' | 'computer' | 'portfolio' | 'links';
 type SearchScope = 'all' | 'projects' | 'experience' | 'achievements' | 'pictures';
 
+type Point = {x: number; y: number};
+type Direction = 'up' | 'down' | 'left' | 'right';
+
+const SNAKE_COLS = 20;
+const SNAKE_ROWS = 15;
+const INITIAL_SNAKE: Point[] = [{x: 9, y: 7}, {x: 8, y: 7}, {x: 7, y: 7}];
+
+function pointKey(point: Point) {
+  return `${point.x}-${point.y}`;
+}
+
+function randomFood(snake: Point[]): Point {
+  const occupied = new Set(snake.map(pointKey));
+  const free: Point[] = [];
+  for (let y = 0; y < SNAKE_ROWS; y += 1) {
+    for (let x = 0; x < SNAKE_COLS; x += 1) {
+      if (!occupied.has(`${x}-${y}`)) free.push({x, y});
+    }
+  }
+  return free[Math.floor(Math.random() * free.length)] || {x: 14, y: 7};
+}
+
 type SearchResult = {
   id: string;
   type: Exclude<SearchScope, 'all'>;
@@ -68,6 +92,7 @@ const shortcuts: {id: AppId; label: string; icon: string}[] = [
   {id: 'gallery', label: 'My Pictures', icon: `${I}/my-pictures.svg`},
   {id: 'documents', label: 'My Documents', icon: `${I}/my-documents.svg`},
   {id: 'about', label: 'My Computer', icon: `${I}/my-computer.svg`},
+  {id: 'games', label: 'Games', icon: `${I}/games.svg`},
   {id: 'recycle', label: 'Recycle Bin', icon: `${I}/recycle-bin.svg`},
 ];
 
@@ -122,6 +147,13 @@ export default function Home() {
   const [runError, setRunError] = useState('');
   const [photoZoom, setPhotoZoom] = useState(1);
   const [photoRotation, setPhotoRotation] = useState(0);
+  const [snake, setSnake] = useState<Point[]>(INITIAL_SNAKE);
+  const [snakeFood, setSnakeFood] = useState<Point>({x: 14, y: 7});
+  const [snakeDirection, setSnakeDirection] = useState<Direction>('right');
+  const [snakeRunning, setSnakeRunning] = useState(false);
+  const [snakeGameOver, setSnakeGameOver] = useState(false);
+  const [snakeScore, setSnakeScore] = useState(0);
+  const [snakeHighScore, setSnakeHighScore] = useState(0);
 
   const drag = useRef<{id: string; startX: number; startY: number; x: number; y: number} | null>(null);
   const resize = useRef<{id: string; startX: number; startY: number; width: number; height: number} | null>(null);
@@ -179,6 +211,28 @@ export default function Home() {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT';
+      const currentWindow = windows.find(win => win.id === active);
+      if (!typing && currentWindow?.app === 'snake') {
+        const key = event.key.toLowerCase();
+        const nextDirection: Partial<Record<string, Direction>> = {
+          arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down', arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right',
+        };
+        if (nextDirection[key]) {
+          event.preventDefault();
+          const next = nextDirection[key]!;
+          setSnakeDirection(current => {
+            const opposite = (current === 'up' && next === 'down') || (current === 'down' && next === 'up') || (current === 'left' && next === 'right') || (current === 'right' && next === 'left');
+            return opposite ? current : next;
+          });
+          setSnakeRunning(true);
+          return;
+        }
+        if (event.code === 'Space') {
+          event.preventDefault();
+          setSnakeRunning(value => !value);
+          return;
+        }
+      }
       if (event.key === 'Escape') {
         setStart(false);
         setContext(null);
@@ -197,7 +251,6 @@ export default function Home() {
         if (shortcut) launch(shortcut.id);
       }
       if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-        const currentWindow = windows.find(win => win.id === active);
         if (currentWindow?.app === 'photoViewer' && currentWindow.photo) {
           event.preventDefault();
           movePhoto(currentWindow.id, event.key === 'ArrowRight' ? 1 : -1);
@@ -208,6 +261,51 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKeyDown);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, selected, windows]);
+
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem('nurbekos-snake-high-score') || 0);
+    if (Number.isFinite(saved)) setSnakeHighScore(saved);
+  }, []);
+
+  useEffect(() => {
+    if (!snakeRunning || snakeGameOver) return;
+    const timer = window.setInterval(() => {
+      setSnake(current => {
+        const head = current[0];
+        const delta: Record<Direction, Point> = {
+          up: {x: 0, y: -1},
+          down: {x: 0, y: 1},
+          left: {x: -1, y: 0},
+          right: {x: 1, y: 0},
+        };
+        const move = delta[snakeDirection];
+        const nextHead = {x: head.x + move.x, y: head.y + move.y};
+        const hitWall = nextHead.x < 0 || nextHead.x >= SNAKE_COLS || nextHead.y < 0 || nextHead.y >= SNAKE_ROWS;
+        const ate = nextHead.x === snakeFood.x && nextHead.y === snakeFood.y;
+        const bodyToCheck = ate ? current : current.slice(0, -1);
+        const hitSelf = bodyToCheck.some(point => point.x === nextHead.x && point.y === nextHead.y);
+        if (hitWall || hitSelf) {
+          setSnakeRunning(false);
+          setSnakeGameOver(true);
+          return current;
+        }
+        const nextSnake = [nextHead, ...current];
+        if (ate) {
+          const nextScore = snakeScore + 10;
+          setSnakeScore(nextScore);
+          if (nextScore > snakeHighScore) {
+            setSnakeHighScore(nextScore);
+            window.localStorage.setItem('nurbekos-snake-high-score', String(nextScore));
+          }
+          setSnakeFood(randomFood(nextSnake));
+          return nextSnake;
+        }
+        nextSnake.pop();
+        return nextSnake;
+      });
+    }, Math.max(75, 150 - Math.floor(snakeScore / 50) * 10));
+    return () => window.clearInterval(timer);
+  }, [snakeDirection, snakeFood, snakeGameOver, snakeHighScore, snakeRunning, snakeScore]);
 
   const searchResults = useMemo<SearchResult[]>(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -266,6 +364,8 @@ export default function Home() {
       achievementDetail: [780, 580],
       properties: [570, 520],
       experienceProperties: [610, 545],
+      games: [720, 520],
+      snake: [680, 620],
     };
     const size = windowSizes[app] ?? [760, 540];
     setWindows(current => [...current, {
@@ -364,6 +464,25 @@ export default function Home() {
     else if (result.type === 'achievements' && result.achievement) openAchievement(result.achievement);
   }
 
+  function resetSnake(startImmediately = true) {
+    setSnake(INITIAL_SNAKE);
+    setSnakeFood(randomFood(INITIAL_SNAKE));
+    setSnakeDirection('right');
+    setSnakeScore(0);
+    setSnakeGameOver(false);
+    setSnakeRunning(startImmediately);
+  }
+
+  function openSnake() {
+    const existing = windows.find(win => win.app === 'snake');
+    if (existing) {
+      focus(existing.id);
+      return;
+    }
+    resetSnake(false);
+    launch('snake', 'Snake.exe');
+  }
+
   function runProgram(event: FormEvent) {
     event.preventDefault();
     const command = runCommand.trim();
@@ -388,10 +507,15 @@ export default function Home() {
       recycle: 'recycle',
       'recycle bin': 'recycle',
       search: 'search',
+      games: 'games',
     };
 
     if (aliases[normalized]) {
       launch(aliases[normalized]);
+      return;
+    }
+    if (normalized === 'snake' || normalized === 'snake.exe') {
+      openSnake();
       return;
     }
     if (normalized === 'cv' || normalized === 'resume' || normalized === 'cv.pdf') {
@@ -438,6 +562,8 @@ export default function Home() {
     if (win.app === 'projects' || win.app === 'projectDetail') return `${I}/my-projects.svg`;
     if (win.app === 'search') return `${I}/search.svg`;
     if (win.app === 'run') return `${I}/run.svg`;
+    if (win.app === 'games') return `${I}/games.svg`;
+    if (win.app === 'snake') return `${I}/snake.svg`;
     return `${I}/folder.svg`;
   }
 
@@ -449,6 +575,8 @@ export default function Home() {
     if (win.app === 'experienceProperties') return `${win.experience || win.title}`;
     if (win.app === 'achievementDetail') return `C:\\Documents and Settings\\Nurbek\\Achievements\\${win.achievement || ''}`;
     if (win.app === 'search') return 'Search Results';
+    if (win.app === 'games') return 'C:\\Documents and Settings\\Nurbek\\Games';
+    if (win.app === 'snake') return 'C:\\Documents and Settings\\Nurbek\\Games\\Snake.exe';
     return `C:\\Documents and Settings\\Nurbek\\${win.title}`;
   }
 
@@ -470,7 +598,7 @@ export default function Home() {
     if (window.matchMedia('(pointer: coarse)').matches) action();
   }
 
-  const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'achievementDetail', 'gallery', 'documents', 'recycle', 'browser', 'search'];
+  const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'achievementDetail', 'gallery', 'documents', 'games', 'recycle', 'browser', 'search'];
 
   return (
     <main
@@ -482,7 +610,7 @@ export default function Home() {
 
       {boot && (
         <div className="boot" role="status" aria-label="NurbekOS is starting">
-          <div className="boot-logo"><span className="boot-word">nurbek</span><span>OS</span><small>portfolio edition v4</small></div>
+          <div className="boot-logo"><span className="boot-word">nurbek</span><span>OS</span><small>portfolio edition v4.4</small></div>
           <div className="boot-progress" aria-hidden="true"><span/></div>
           <button type="button" onClick={() => setBoot(false)}>Skip startup ›</button>
         </div>
@@ -510,7 +638,7 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>v4 portfolio edition</small></div>
+      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>v4.4 portfolio edition</small></div>
       <div className="desktop-hint" aria-hidden="true">Double-click an icon · F3 or / to search</div>
 
       {windows.filter(win => !win.minimized).map((win, index) => {
@@ -789,6 +917,45 @@ export default function Home() {
                 </div>;
               })()}
 
+              {win.app === 'games' && (
+                <div className={`explorer-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
+                  {foldersPane && <aside className="explorer-sidebar"><div className="task-panel"><strong>Game Tasks</strong><button type="button" onClick={openSnake}>Play Snake</button></div><div className="task-panel"><strong>Details</strong><p><b>Games</b><br/>1 installed game<br/>Classic NurbekOS entertainment</p></div></aside>}
+                  <div className="explorer-main">
+                    <div className="explorer-files game-files">
+                      <button type="button" className="file-item game-file" onDoubleClick={openSnake} onClick={() => activateOnTouch(openSnake)}>
+                        <Icon src={`${I}/snake.svg`} size={48}/><span className="file-copy"><span className="file-name">Snake.exe</span><small>Application · Classic arcade game</small><small>Arrow keys / WASD</small></span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {win.app === 'snake' && (
+                <div className="snake-app">
+                  <div className="snake-topbar">
+                    <div><b>Snake</b><span>Score: {snakeScore}</span><span>High score: {snakeHighScore}</span></div>
+                    <div className="snake-actions"><button type="button" className="xp-button" onClick={() => setSnakeRunning(value => !value)}>{snakeRunning ? 'Pause' : snakeGameOver ? 'Game over' : 'Start'}</button><button type="button" className="xp-button" onClick={() => resetSnake(true)}>New Game</button></div>
+                  </div>
+                  <div className="snake-screen-wrap">
+                    <div className="snake-screen" role="application" aria-label="Snake game board">
+                      {Array.from({length: SNAKE_COLS * SNAKE_ROWS}, (_, index) => {
+                        const x = index % SNAKE_COLS;
+                        const y = Math.floor(index / SNAKE_COLS);
+                        const snakeIndex = snake.findIndex(point => point.x === x && point.y === y);
+                        const isFood = snakeFood.x === x && snakeFood.y === y;
+                        return <span key={index} className={`snake-cell ${snakeIndex === 0 ? 'snake-head' : snakeIndex > 0 ? 'snake-body' : ''} ${isFood ? 'snake-food' : ''}`}/>;
+                      })}
+                      {!snakeRunning && <div className="snake-overlay"><b>{snakeGameOver ? 'GAME OVER' : snakeScore ? 'PAUSED' : 'SNAKE'}</b><span>{snakeGameOver ? `Score: ${snakeScore}` : 'Press an arrow key, WASD, or Start'}</span>{snakeGameOver && <button type="button" onClick={() => resetSnake(true)}>Play Again</button>}</div>}
+                    </div>
+                  </div>
+                  <div className="snake-mobile-controls" aria-label="Snake touch controls">
+                    <button type="button" aria-label="Move up" onClick={() => {setSnakeDirection(current => current === 'down' ? current : 'up'); setSnakeRunning(true);}}>▲</button>
+                    <div><button type="button" aria-label="Move left" onClick={() => {setSnakeDirection(current => current === 'right' ? current : 'left'); setSnakeRunning(true);}}>◀</button><button type="button" aria-label="Move down" onClick={() => {setSnakeDirection(current => current === 'up' ? current : 'down'); setSnakeRunning(true);}}>▼</button><button type="button" aria-label="Move right" onClick={() => {setSnakeDirection(current => current === 'left' ? current : 'right'); setSnakeRunning(true);}}>▶</button></div>
+                  </div>
+                  <div className="snake-help">Arrow keys / WASD to move · Space to pause · Eat the red apple</div>
+                </div>
+              )}
+
               {win.app === 'documents' && (
                 <div className={`explorer-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
                   {foldersPane && <aside className="explorer-sidebar"><div className="task-panel"><strong>File and Folder Tasks</strong><button type="button" onClick={() => launch('search', 'Search Documents')}>Search this folder</button></div><div className="task-panel"><strong>Other Places</strong><button type="button" onClick={() => launch('gallery')}>My Pictures</button><button type="button" onClick={() => launch('projects')}>My Projects</button></div></aside>}
@@ -850,7 +1017,7 @@ export default function Home() {
                     <div className="system-copy"><h2>{profile.name}</h2><p className="system-headline">{profile.headline}</p><p>{profile.bio}</p><div className="system-rule"/><dl><dt>Registered to:</dt><dd>{profile.name}</dd><dt>Location:</dt><dd>{profile.location}</dd><dt>Focus:</dt><dd>{profile.focus}</dd></dl></div>
                   </div>}
                   {aboutTab === 'computer' && <div className="system-tab"><fieldset><legend>Computer description</legend><p>NurbekOS — interactive portfolio and project archive.</p></fieldset><fieldset><legend>Full computer name</legend><dl className="system-fields"><dt>Computer name:</dt><dd>{profile.computerName}</dd><dt>Workgroup:</dt><dd>{profile.workgroup}</dd></dl></fieldset><p className="system-note">This portfolio behaves like a desktop so visitors can explore work as files, folders and applications rather than as one long page.</p></div>}
-                  {aboutTab === 'portfolio' && <div className="system-tab portfolio-tab"><div className="setting-row"><span><b>Projects</b><small>{projects.length} projects and experiments</small></span><button type="button" className="xp-button" onClick={() => launch('projects')}>Open</button></div><div className="setting-row"><span><b>Experience</b><small>{experiences.length} roles and organizations</small></span><button type="button" className="xp-button" onClick={() => launch('experience')}>Open</button></div><div className="setting-row"><span><b>Achievements</b><small>{awards.length} awards and recognitions</small></span><button type="button" className="xp-button" onClick={() => launch('achievements')}>Open</button></div><div className="setting-row"><span><b>Pictures</b><small>{photos.length} images currently installed</small></span><button type="button" className="xp-button" onClick={() => launch('gallery')}>Open</button></div></div>}
+                  {aboutTab === 'portfolio' && <div className="system-tab portfolio-tab"><div className="setting-row"><span><b>Projects</b><small>{projects.length} projects and experiments</small></span><button type="button" className="xp-button" onClick={() => launch('projects')}>Open</button></div><div className="setting-row"><span><b>Experience</b><small>{experiences.length} roles and organizations</small></span><button type="button" className="xp-button" onClick={() => launch('experience')}>Open</button></div><div className="setting-row"><span><b>Achievements</b><small>{awards.length} awards and recognitions</small></span><button type="button" className="xp-button" onClick={() => launch('achievements')}>Open</button></div><div className="setting-row"><span><b>Pictures</b><small>{photos.length} images currently installed</small></span><button type="button" className="xp-button" onClick={() => launch('gallery')}>Open</button></div><div className="setting-row"><span><b>Games</b><small>Snake.exe installed</small></span><button type="button" className="xp-button" onClick={() => launch('games')}>Open</button></div></div>}
                   {aboutTab === 'links' && <div className="system-tab links-tab"><p>Open Nurbek’s public profiles:</p><a href={profile.links.website} target="_blank" rel="noopener noreferrer">alisherov.com</a><a href={profile.links.github} target="_blank" rel="noopener noreferrer">GitHub / alisherovuz</a><a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn / uzalisherov</a><a href="/cv.pdf" target="_blank" rel="noopener noreferrer">Curriculum vitae (PDF)</a></div>}
                   <div className="properties-actions"><button type="button" className="xp-button" onClick={() => close(win.id)}>OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button><button type="button" className="xp-button" disabled>Apply</button></div>
                 </div>
@@ -870,7 +1037,7 @@ export default function Home() {
               })()}
             </div>
 
-            {showStatus && <div className="status-bar"><span>{win.app === 'projects' ? `${projects.length} objects` : win.app === 'experience' ? `${experiences.length} objects` : win.app === 'gallery' ? `${win.project ? photos.filter(photo => photo.project === win.project).length : win.achievement ? photos.filter(photo => photo.achievement === win.achievement).length : photos.length} pictures` : win.app === 'achievements' ? `${awards.length} objects` : 'Ready'}</span><span>My Computer</span></div>}
+            {showStatus && <div className="status-bar"><span>{win.app === 'projects' ? `${projects.length} objects` : win.app === 'experience' ? `${experiences.length} objects` : win.app === 'gallery' ? `${win.project ? photos.filter(photo => photo.project === win.project).length : win.achievement ? photos.filter(photo => photo.achievement === win.achievement).length : photos.length} pictures` : win.app === 'achievements' ? `${awards.length} objects` : win.app === 'games' ? '1 object' : 'Ready'}</span><span>My Computer</span></div>}
 
             {!win.maximized && !['run', 'about', 'properties', 'experienceProperties', 'photoViewer'].includes(win.app) && <button type="button" className="resize-handle" aria-label={`Resize ${win.title}`} onPointerDown={event => {event.stopPropagation(); resize.current = {id: win.id, startX: event.clientX, startY: event.clientY, width: win.width, height: win.height};}}/>}
           </section>
@@ -893,6 +1060,7 @@ export default function Home() {
             <button type="button" onClick={() => launch('experience')}><Icon src={`${I}/folder.svg`} size={34}/><span><b>Work Experience</b><small>Roles, teams & organizations</small></span></button>
             <button type="button" onClick={() => launch('achievements')}><Icon src={`${I}/achievements.svg`} size={34}/><span><b>Achievements</b><small>Awards & recognitions</small></span></button>
             <button type="button" onClick={() => launch('gallery')}><Icon src={`${I}/my-pictures.svg`} size={34}/><span><b>My Pictures</b><small>Photos, projects & memories</small></span></button>
+            <button type="button" onClick={() => launch('games')}><Icon src={`${I}/games.svg`} size={34}/><span><b>Games</b><small>Snake.exe & classic fun</small></span></button>
           </div>
           <div>
             <button type="button" onClick={() => launch('documents')}><Icon src={`${I}/my-documents.svg`} size={27}/><b>My Documents</b></button>
