@@ -10,7 +10,7 @@
     "audit:prod": "npm audit --omit=dev"
   },
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "dependencies": {
     "next": "15.5.27",
@@ -18,9 +18,9 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0"
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.8.0"
   }
 }
