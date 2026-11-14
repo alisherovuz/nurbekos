@@ -24,9 +24,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .desktop-hint{position:absolute;right:28px;bottom:48px;color:#ffffffb8;text-shadow:1px 1px 2px #37698f;z-index:1;font-size:11px}
 
 .taskbar{height:34px;position:absolute;bottom:0;left:0;right:0;background:linear-gradient(#3d8aef 0%,#2b70d8 12%,#245ec5 51%,#1e4faa 93%,#2868cf 100%);border-top:1px solid #7ab0f4;display:flex;z-index:200;color:#fff;box-shadow:0 -1px 3px #214e9d}
-.start-button{height:34px;width:112px;border:0;border-radius:0 14px 14px 0;background:linear-gradient(#7bd465 0%,#54b442 12%,#389934 45%,#2e8c2d 82%,#1e7326);color:#fff;font-size:18px;font-weight:bold;font-style:italic;text-shadow:1px 1px #1e6228;box-shadow:inset 0 1px 2px #d0efc2,2px 0 3px #174c28;display:flex;align-items:center;justify-content:center;gap:6px;padding-right:12px}
-.start-button:hover,.start-button.pressed{filter:brightness(1.08);box-shadow:inset 1px 1px 4px #18551e}
-.windows-mark{width:23px;height:23px;display:grid;place-items:center;font-style:normal;font-size:25px;line-height:20px;color:#fff;text-shadow:1px 1px #276d2c;transform:rotate(-4deg)}
+.start-button{flex:0 0 auto;height:34px;width:112px;border:0;border-radius:0 14px 14px 0;background:linear-gradient(#7bd465 0%,#54b442 12%,#389934 45%,#2e8c2d 82%,#1e7326);color:#fff;font-size:18px;font-weight:bold;font-style:italic;text-shadow:1px 1px #1e6228;box-shadow:inset 0 1px 2px #d0efc2,2px 0 3px #174c28;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 14px 0 6px;letter-spacing:.2px}
+.start-button i{font-style:italic;line-height:1;padding-right:2px}
+.start-button:hover{background:linear-gradient(#8de077 0%,#62c24f 12%,#41a63c 45%,#349634 82%,#227c2b)}
+.start-button.pressed,.start-button:active{background:linear-gradient(#2e8a2c 0%,#2f8d2e 18%,#3c9c37 55%,#46a840 90%,#2a8030);box-shadow:inset 1px 2px 4px #134a1a,2px 0 3px #174c28}
+.start-button.pressed>*,.start-button:active>*{transform:translate(1px,1px)}
+.start-button:focus-visible{outline:1px dotted #fff;outline-offset:-4px}
+.windows-mark{flex:0 0 auto;width:22px;height:22px;display:block;transform:rotate(-6deg) skewY(-3deg);filter:drop-shadow(1px 1px 0 #1e6228)}
+.start-button.pressed>.windows-mark,.start-button:active>.windows-mark{transform:translate(1px,1px) rotate(-6deg) skewY(-3deg)}
 .task-apps{display:flex;gap:3px;padding:3px 8px;flex:1;min-width:0;overflow:auto hidden;scrollbar-width:none}
 .task-apps::-webkit-scrollbar{display:none}
 .task-apps button{height:28px;background:linear-gradient(#5d9ced,#3478da);border:1px solid #1b55b4;color:#fff;border-radius:3px;max-width:190px;min-width:105px;display:flex;align-items:center;gap:5px;padding:2px 7px;overflow:hidden;text-shadow:1px 1px #1d4f9e}
