@@ -36,6 +36,7 @@ type WindowState = {
   height: number;
   minimized: boolean;
   maximized: boolean;
+  z: number;
   url?: string;
   project?: string;
   experience?: string;
@@ -71,10 +72,23 @@ const MINE_ROWS = 9;
 const MINE_COLS = 9;
 const MINE_COUNT = 10;
 
-function createMineBoard(): MineCell[] {
+// safeIndex: the first clicked cell. It and its neighbours never hold a mine, so the first click
+// always opens an area, like classic Minesweeper.
+function createMineBoard(safeIndex?: number): MineCell[] {
   const total = MINE_ROWS * MINE_COLS;
+  const safe = new Set<number>();
+  if (safeIndex !== undefined) {
+    const row = Math.floor(safeIndex / MINE_COLS), col = safeIndex % MINE_COLS;
+    for (let dr = -1; dr <= 1; dr += 1) for (let dc = -1; dc <= 1; dc += 1) {
+      const rr = row + dr, cc = col + dc;
+      if (rr >= 0 && rr < MINE_ROWS && cc >= 0 && cc < MINE_COLS) safe.add(rr * MINE_COLS + cc);
+    }
+  }
   const mines = new Set<number>();
-  while (mines.size < MINE_COUNT) mines.add(Math.floor(Math.random() * total));
+  while (mines.size < MINE_COUNT) {
+    const candidate = Math.floor(Math.random() * total);
+    if (!safe.has(candidate)) mines.add(candidate);
+  }
   return Array.from({length: total}, (_, index) => {
     const row = Math.floor(index / MINE_COLS);
     const col = index % MINE_COLS;
@@ -133,9 +147,31 @@ const shortcuts: {id: AppId; label: string; icon: string}[] = [
 ];
 
 let serial = 0;
+let zCounter = 0;
 
 function Icon({src, size = 32, className = '', alt = ''}: {src: string; size?: number; className?: string; alt?: string}) {
   return <img className={`xp-icon ${className}`} src={src} width={size} height={size} alt={alt} draggable={false}/>;
+}
+
+// Drawn as SVG so it looks the same on every device; the old "▦" text glyph depended on the
+// visitor's fonts and rendered as a blurry grid (or a missing-glyph box) on many systems.
+function StartMark() {
+  return (
+    <svg className="windows-mark" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="start-pane" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff"/>
+          <stop offset="1" stopColor="#e3f5da"/>
+        </linearGradient>
+      </defs>
+      <g fill="url(#start-pane)" stroke="#2b7a2f" strokeWidth=".7">
+        <rect x="2.5" y="2.5" width="8.6" height="8.6" rx="1.6"/>
+        <rect x="12.9" y="2.5" width="8.6" height="8.6" rx="1.6"/>
+        <rect x="2.5" y="12.9" width="8.6" height="8.6" rx="1.6"/>
+        <rect x="12.9" y="12.9" width="8.6" height="8.6" rx="1.6"/>
+      </g>
+    </svg>
+  );
 }
 
 function BrandIcon({name, logo, size = 52}: {name: string; logo?: string; size?: number}) {
@@ -199,14 +235,22 @@ export default function Home() {
   const [unlockedBadges, setUnlockedBadges] = useState<BadgeId[]>([]);
   const [badgeToast, setBadgeToast] = useState<OsBadge | null>(null);
 
+  // Direction of the last step the snake actually took. Turns are checked against this, not against
+  // the pending direction, so two quick key presses (e.g. up then left while moving right) can no
+  // longer turn the snake back into itself.
+  const snakeMoved = useRef<Direction>('right');
   const drag = useRef<{id: string; startX: number; startY: number; x: number; y: number} | null>(null);
   const resize = useRef<{id: string; startX: number; startY: number; width: number; height: number} | null>(null);
 
   useEffect(() => {
-    const tick = () => setTime(new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}));
+    // Tick on the minute boundary so the taskbar clock never lags behind the real time.
+    let timeout = 0;
+    const tick = () => {
+      setTime(new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}));
+      timeout = window.setTimeout(tick, 60000 - (Date.now() % 60000) + 50);
+    };
     tick();
-    const interval = window.setInterval(tick, 30000);
-    return () => window.clearInterval(interval);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
@@ -256,24 +300,19 @@ export default function Home() {
       const target = event.target as HTMLElement | null;
       const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT';
       const currentWindow = windows.find(win => win.id === active);
-      if (!typing && currentWindow?.app === 'snake') {
+      if (!typing && currentWindow?.app === 'snake' && !currentWindow.minimized) {
         const key = event.key.toLowerCase();
         const nextDirection: Partial<Record<string, Direction>> = {
           arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down', arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right',
         };
         if (nextDirection[key]) {
           event.preventDefault();
-          const next = nextDirection[key]!;
-          setSnakeDirection(current => {
-            const opposite = (current === 'up' && next === 'down') || (current === 'down' && next === 'up') || (current === 'left' && next === 'right') || (current === 'right' && next === 'left');
-            return opposite ? current : next;
-          });
-          setSnakeRunning(true);
+          turnSnake(nextDirection[key]!);
           return;
         }
         if (event.code === 'Space') {
           event.preventDefault();
-          setSnakeRunning(value => !value);
+          toggleSnake();
           return;
         }
       }
@@ -304,7 +343,7 @@ export default function Home() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, selected, windows]);
+  }, [active, selected, windows, snakeGameOver]);
 
   useEffect(() => {
     const saved = Number(window.localStorage.getItem('nurbekos-snake-high-score') || 0);
@@ -335,6 +374,7 @@ export default function Home() {
           right: {x: 1, y: 0},
         };
         const move = delta[snakeDirection];
+        snakeMoved.current = snakeDirection;
         const nextHead = {x: head.x + move.x, y: head.y + move.y};
         const hitWall = nextHead.x < 0 || nextHead.x >= SNAKE_COLS || nextHead.y < 0 || nextHead.y >= SNAKE_ROWS;
         const ate = nextHead.x === snakeFood.x && nextHead.y === snakeFood.y;
@@ -440,6 +480,7 @@ export default function Home() {
       height: size[1],
       minimized: false,
       maximized: false,
+      z: ++zCounter,
       url,
       project,
       experience,
@@ -449,12 +490,26 @@ export default function Home() {
     setActive(id);
   }
 
+  // Bring a window to the front by raising its z value. The array order (and so the DOM order and
+  // the taskbar order) stays the same: moving an <iframe> in the DOM reloads it, which used to reset
+  // the Internet Explorer windows every time they were clicked.
   function focus(id: string) {
     setActive(id);
-    setWindows(current => {
-      const win = current.find(item => item.id === id);
-      return win ? [...current.filter(item => item.id !== id), {...win, minimized: false}] : current;
-    });
+    const z = ++zCounter;
+    setWindows(current => current.some(item => item.id === id)
+      ? current.map(item => item.id === id ? {...item, minimized: false, z} : item)
+      : current);
+  }
+
+  function minimize(id: string) {
+    patch(id, {minimized: true});
+    setActive(current => current === id ? '' : current);
+  }
+
+  // Like XP: clicking the taskbar button of the window that is already in front minimizes it.
+  function toggleFromTaskbar(win: WindowState) {
+    if (active === win.id && !win.minimized) minimize(win.id);
+    else focus(win.id);
   }
 
   function patch(id: string, change: Partial<WindowState>) {
@@ -555,11 +610,17 @@ export default function Home() {
 
   function revealMineCell(index: number) {
     if (mineGameOver || mineWon) return;
+    // Flag mode must be handled first: the old order returned early on flagged cells,
+    // so on phones a flag could never be removed again.
+    if (mineFlagMode) { flagMineCell(index); return; }
     setMineBoard(current => {
-      const next = current.map(cell => ({...cell}));
+      if (!current[index] || current[index].flagged || current[index].revealed) return current;
+      const firstMove = !current.some(item => item.revealed);
+      const base = firstMove
+        ? createMineBoard(index).map((item, i) => ({...item, flagged: current[i]?.flagged ?? false}))
+        : current;
+      const next = base.map(item => ({...item}));
       const cell = next[index];
-      if (!cell || cell.flagged || cell.revealed) return current;
-      if (mineFlagMode) { cell.flagged = !cell.flagged; return next; }
       if (cell.mine) {
         next.forEach(item => { if (item.mine) item.revealed = true; });
         setMineGameOver(true);
@@ -603,7 +664,7 @@ export default function Home() {
     if (!raw) return;
     unlockBadge('power-user');
     const command = raw.toLowerCase();
-    const output: string[] = [`C:\NurbekOS> ${raw}`];
+    const output: string[] = [`C:\\NurbekOS> ${raw}`];
     if (command === 'clear' || command === 'cls') {
       setTerminalLines([]); setTerminalInput(''); return;
     }
@@ -624,7 +685,22 @@ export default function Home() {
     setTerminalInput('');
   }
 
+  function turnSnake(next: Direction) {
+    if (snakeGameOver) return; // keep the GAME OVER screen until the player restarts
+    const opposite: Record<Direction, Direction> = {up: 'down', down: 'up', left: 'right', right: 'left'};
+    if (opposite[next] !== snakeMoved.current) setSnakeDirection(next);
+    setSnakeRunning(true);
+  }
+
+  // After a game over, Start/Space used to set "running" on a dead board: the overlay vanished
+  // and the game froze. Now they start a new game instead.
+  function toggleSnake() {
+    if (snakeGameOver) resetSnake(true);
+    else setSnakeRunning(value => !value);
+  }
+
   function resetSnake(startImmediately = true) {
+    snakeMoved.current = 'right';
     setSnake(INITIAL_SNAKE);
     setSnakeFood(randomFood(INITIAL_SNAKE));
     setSnakeDirection('right');
@@ -764,6 +840,8 @@ export default function Home() {
     if (window.matchMedia('(pointer: coarse)').matches) action();
   }
 
+  const stackRank = new Map([...windows].sort((a, b) => a.z - b.z).map((win, rank) => [win.id, rank]));
+
   const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'achievementDetail', 'gallery', 'documents', 'games', 'badges', 'recycle', 'browser', 'search'];
 
   return (
@@ -807,7 +885,8 @@ export default function Home() {
       <div className="desktop-brand" aria-hidden="true">nurbekOS <small>portfolio edition</small></div>
       <div className="desktop-hint" aria-hidden="true">Double-click an icon · F3 or / to search</div>
 
-      {windows.filter(win => !win.minimized).map((win, index) => {
+      {windows.filter(win => !win.minimized).map(win => {
+        const index = stackRank.get(win.id) ?? 0;
         const showExplorerChrome = explorerApps.includes(win.app);
         const showStatus = showExplorerChrome && win.app !== 'browser';
         return (
@@ -834,7 +913,7 @@ export default function Home() {
             >
               <span className="title-left"><Icon src={windowIcon(win)} size={17}/>{win.title}</span>
               <span className="window-actions">
-                <button type="button" aria-label={`Minimize ${win.title}`} onClick={() => patch(win.id, {minimized: true})}><i className="min-glyph"/></button>
+                <button type="button" aria-label={`Minimize ${win.title}`} onClick={() => minimize(win.id)}><i className="min-glyph"/></button>
                 <button type="button" aria-label={`${win.maximized ? 'Restore' : 'Maximize'} ${win.title}`} onClick={() => patch(win.id, {maximized: !win.maximized})}><i className="max-glyph"/></button>
                 <button type="button" className="close" aria-label={`Close ${win.title}`} onClick={() => close(win.id)}><i className="close-glyph"/></button>
               </span>
@@ -1099,7 +1178,7 @@ export default function Home() {
                 <div className="snake-app">
                   <div className="snake-topbar">
                     <div><b>Snake</b><span>Score: {snakeScore}</span><span>High score: {snakeHighScore}</span></div>
-                    <div className="snake-actions"><button type="button" className="xp-button" onClick={() => setSnakeRunning(value => !value)}>{snakeRunning ? 'Pause' : snakeGameOver ? 'Game over' : 'Start'}</button><button type="button" className="xp-button" onClick={() => resetSnake(true)}>New Game</button></div>
+                    <div className="snake-actions"><button type="button" className="xp-button" onClick={toggleSnake}>{snakeRunning ? 'Pause' : snakeGameOver ? 'Play again' : snakeScore ? 'Resume' : 'Start'}</button><button type="button" className="xp-button" onClick={() => resetSnake(true)}>New Game</button></div>
                   </div>
                   <div className="snake-screen-wrap">
                     <div className="snake-screen" role="application" aria-label="Snake game board">
@@ -1114,8 +1193,8 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="snake-mobile-controls" aria-label="Snake touch controls">
-                    <button type="button" aria-label="Move up" onClick={() => {setSnakeDirection(current => current === 'down' ? current : 'up'); setSnakeRunning(true);}}>▲</button>
-                    <div><button type="button" aria-label="Move left" onClick={() => {setSnakeDirection(current => current === 'right' ? current : 'left'); setSnakeRunning(true);}}>◀</button><button type="button" aria-label="Move down" onClick={() => {setSnakeDirection(current => current === 'up' ? current : 'down'); setSnakeRunning(true);}}>▼</button><button type="button" aria-label="Move right" onClick={() => {setSnakeDirection(current => current === 'left' ? current : 'right'); setSnakeRunning(true);}}>▶</button></div>
+                    <button type="button" aria-label="Move up" onClick={() => turnSnake('up')}>▲</button>
+                    <div><button type="button" aria-label="Move left" onClick={() => turnSnake('left')}>◀</button><button type="button" aria-label="Move down" onClick={() => turnSnake('down')}>▼</button><button type="button" aria-label="Move right" onClick={() => turnSnake('right')}>▶</button></div>
                   </div>
                   <div className="snake-help">Arrow keys / WASD to move · Space to pause · Eat the red apple</div>
                 </div>
@@ -1236,7 +1315,7 @@ export default function Home() {
         </>}
       </div>}
 
-      {start && <section className="start-menu" onClick={event => event.stopPropagation()} aria-label="Start menu">
+      {start && <section className="start-menu" id="start-menu" onClick={event => event.stopPropagation()} aria-label="Start menu">
         <header className="start-header"><img className="start-profile-photo" src={profile.photo} alt={`${profile.name} profile`} /><span>{profile.name}</span></header>
         <div className="start-columns">
           <div>
@@ -1264,9 +1343,9 @@ export default function Home() {
       {badgeToast && <div className="badge-toast" role="status"><div className="badge-toast-icon">★</div><div><b>Achievement unlocked!</b><span>{badgeToast.name}</span></div></div>}
 
       <footer className="taskbar" onClick={event => event.stopPropagation()}>
-        <button type="button" className={`start-button ${start ? 'pressed' : ''}`} onClick={() => {setStart(value => !value); setContext(null);}} aria-expanded={start}><span className="windows-mark" aria-hidden="true">▦</span><i>start</i></button>
+        <button type="button" className={`start-button ${start ? 'pressed' : ''}`} onClick={() => {setStart(value => !value); setContext(null);}} aria-expanded={start} aria-haspopup="true" aria-controls="start-menu" aria-label="Start menu"><StartMark/><i>start</i></button>
         <div className="task-apps" aria-label="Open windows">
-          {windows.map(win => <button type="button" key={win.id} className={`${active === win.id && !win.minimized ? 'active-task' : ''}`} onClick={() => focus(win.id)} title={win.title}><Icon src={windowIcon(win)} size={17}/><span>{win.title}</span></button>)}
+          {windows.map(win => <button type="button" key={win.id} className={`${active === win.id && !win.minimized ? 'active-task' : ''}`} onClick={() => toggleFromTaskbar(win)} title={win.title}><Icon src={windowIcon(win)} size={17}/><span>{win.title}</span></button>)}
         </div>
         <div className="tray"><button type="button" className="tray-icon" onClick={() => setSound(value => !value)} aria-label={sound ? 'Mute interface sounds' : 'Enable interface sounds'} title="Interface sound"><Icon src={`${I}/volume.svg`} size={16}/></button><span>{time}</span></div>
       </footer>
