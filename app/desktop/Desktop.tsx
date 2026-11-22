@@ -1084,7 +1084,7 @@ export default function Desktop({content, initialRoute, initialHour, skyLocked =
 
       {boot && (
         <div className="boot" role="status" aria-label="NurbekOS is starting">
-          <div className="boot-logo"><img className="boot-mark" src={`${I}/nurbekos-mark.svg`} alt="" width={72} height={72}/><span className="brand-mark">nurbek<b>OS</b></span><small>{profile.name}</small></div>
+          <div className="boot-logo"><span className="brand-mark">nurbek<b>OS</b></span><small>{profile.name}</small></div>
           <div className="boot-progress" aria-hidden="true"><span/></div>
           <button type="button" onClick={() => setBoot(false)}>Skip startup ›</button>
         </div>
@@ -1752,7 +1752,7 @@ export default function Desktop({content, initialRoute, initialHour, skyLocked =
       {badgeToast && <div className="badge-toast" role="status"><div className="badge-toast-icon">★</div><div><b>Achievement unlocked!</b><span>{badgeToast.name}</span></div></div>}
 
       <footer className="taskbar" onClick={event => event.stopPropagation()}>
-        <button type="button" className={`start-button ${start ? 'pressed' : ''}`} onClick={() => {setStart(value => !value); setContext(null);}} aria-expanded={start}><img className="start-mark" src={`${I}/nurbekos-mark.svg`} alt="" width={24} height={24} draggable={false}/><i>start</i></button>
+        <button type="button" className={`start-button ${start ? 'pressed' : ''}`} onClick={() => {setStart(value => !value); setContext(null);}} aria-expanded={start}><i>start</i></button>
         <div className="task-apps" aria-label="Open windows">
           {windows.map(win => <button type="button" key={win.id} className={`${active === win.id && !win.minimized ? 'active-task' : ''}`} onClick={() => focus(win.id)} title={win.title}><Icon src={windowIcon(win)} size={17}/><span>{win.title}</span></button>)}
         </div>

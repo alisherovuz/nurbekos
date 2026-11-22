@@ -128,6 +128,7 @@ export const projects: Project[] = [
     metrics: [
       {value: '50K+', label: 'students reached'},
       {value: '$10K+', label: 'revenue from ads and partnerships'},
+      {value: '100M UZS', label: 'government grant'},
     ],
   },
   {
@@ -159,7 +160,7 @@ export const projects: Project[] = [
     coverTone: 'teal',
     logo: '/media/projects/mentorgo/logo.webp',
     description: 'A platform connecting ambitious students with mentors who have won major international scholarships.',
-    detail: 'I built the platform with a four-person team. It reached 3,000+ users and hosted 200+ mentoring sessions a month, and our students went on to win more than $1M in scholarships.',
+    detail: 'I built the platform with a four-person team and still run the tech side. It has 3,000+ users and hosts 200+ mentoring sessions a month, and our students have won more than $1M in scholarships.',
     tech: 'Web platform · Mentorship · Scholarships',
     metrics: [
       {value: '3,000+', label: 'users'},
@@ -173,6 +174,7 @@ export const projects: Project[] = [
     url: 'https://atlon.uz',
     year: 'Jul 2026 — present',
     status: 'active',
+    role: 'CTO',
     coverTone: 'green',
     description: 'A youth platform centered on leadership, volunteering and real-world project experience.',
     detail: 'Atlon runs programs where young people lead real projects in their cities. So far it has brought together 500+ participants and 50+ volunteers across 20+ events in 12 cities.',
@@ -314,6 +316,17 @@ export const experiences: Experience[] = [
     highlights: ['Meets every Thursday at BMU', 'Opened with a session on AI basics for students'],
   },
   {
+    id: 'atlon',
+    organization: 'Atlon.uz',
+    role: 'CTO',
+    period: 'Jul 2026 — present',
+    location: 'Uzbekistan',
+    website: 'https://atlon.uz',
+    description: 'I run the tech behind Atlon, a youth platform where young people lead real projects in their cities.',
+    highlights: ['Platform for 500+ participants and 50+ volunteers across 12 cities'],
+    relatedProject: 'Atlon.uz',
+  },
+  {
     id: 'edugrands',
     organization: 'EduGrands',
     role: 'Founder & CEO',
@@ -322,7 +335,7 @@ export const experiences: Experience[] = [
     website: 'https://edugrants.uz',
     logo: '/media/projects/edugrands/logo.webp',
     description: 'Founded and scaled a scholarship-discovery platform and community connecting young people with verified international opportunities.',
-    highlights: ['Grew a Telegram channel into a platform reaching 50,000+ students', 'Made $10,000+ from advertising and partnerships', 'Launched the EduCast interview series and nationwide scholarship marathons'],
+    highlights: ['Grew a Telegram channel into a platform reaching 50,000+ students', 'Made $10,000+ from advertising and partnerships', 'Won a 100M UZS grant from the Specialized Schools Agency', 'Launched the EduCast interview series and nationwide scholarship marathons'],
     relatedProject: 'EduGrands',
   },
   {
@@ -363,12 +376,12 @@ export const experiences: Experience[] = [
     id: 'mentorgo',
     organization: 'MentorGo',
     role: 'Co-Founder & CTO',
-    period: 'Dec 2024 — Nov 2025',
+    period: 'Dec 2024 — present',
     location: 'Uzbekistan',
     website: 'https://mentorgo.uz',
     logo: '/media/projects/mentorgo/logo.webp',
-    description: 'Led the tech side of a mentoring platform with a four-person team.',
-    highlights: ['Built the platform to 3,000+ users and 200+ sessions a month', 'Mentees went on to win $1M+ in scholarships'],
+    description: 'I lead the tech side of a mentoring platform we built with a four-person team.',
+    highlights: ['Grew the platform to 3,000+ users and 200+ sessions a month', 'Mentees have won $1M+ in scholarships'],
     relatedProject: 'MentorGo',
   },
   {
@@ -396,9 +409,9 @@ export const experiences: Experience[] = [
 
 export const awards: Award[] = [
   {year: '2026', name: 'National AI Hackathon — 1st Place, EdTech', issuer: 'National AI Hackathon', description: 'Led JaydariTech to first place with Empira after a 72-hour build.'},
-  {year: '2026', name: '100M UZS Grant', issuer: 'Specialized Schools Agency', description: 'Our team won a 100,000,000 UZS grant for an education project.'},
+  {year: '2026', name: '100M UZS Grant for EduGrands', issuer: 'Specialized Schools Agency', description: 'EduGrands won a 100,000,000 UZS government grant.'},
   {year: '2026', name: 'Mirzo Ulug‘bek Vorislari — Republic Winner', issuer: 'National competition', description: 'Placed in the top 35 out of 48,000+ applicants across Uzbekistan.'},
-  {year: '2025', name: 'Top 3 at IT Park Startup Day', issuer: 'IT Park Uzbekistan', description: 'MentorGo was named one of the top 3 of 25 projects at IT Park’s Startup Day.'},
+  {year: '2025', name: '1st Place at IT Park Startup Day', issuer: 'IT Park Uzbekistan', description: 'MentorGo took 1st place out of 25 projects at IT Park’s Startup Day.'},
   {year: '2025', name: 'LaunchX — 99% Scholarship', issuer: 'LaunchX', description: 'Admitted to LaunchX’s entrepreneurship programme for high school students, with 99% of the fee covered.'},
   {year: '2024', name: '1st Place — Business Championship', issuer: 'Target International School', description: 'Won with WebLaunch among five school branches.'},
   {year: '2024', name: 'Full Tuition Scholarship', issuer: 'Target International School', description: 'A full year of school tuition, covered.'},
@@ -431,7 +444,7 @@ const rawPhotos: Photo[] = [
     caption: '100M UZS grant award.',
     alt: '100M UZS grant award',
     kind: 'photo',
-    achievement: '100M UZS Grant',
+    achievement: '100M UZS Grant for EduGrands',
   },
   {
     id: 'achievements-100m-uzs-grant-02-team-photo',
@@ -443,7 +456,7 @@ const rawPhotos: Photo[] = [
     caption: 'Team photo after the grant.',
     alt: 'Team photo after the grant',
     kind: 'photo',
-    achievement: '100M UZS Grant',
+    achievement: '100M UZS Grant for EduGrands',
   },
   {
     id: 'achievements-launchx-01-acceptance-email',
@@ -530,7 +543,7 @@ const rawPhotos: Photo[] = [
     alt: 'Startup Day event photo',
     kind: 'photo',
     project: 'MentorGo',
-    achievement: 'Top 3 at IT Park Startup Day',
+    achievement: '1st Place at IT Park Startup Day',
   },
   {
     id: 'achievements-startup-day-02-award-photo',
@@ -543,7 +556,7 @@ const rawPhotos: Photo[] = [
     alt: 'Startup Day award photo',
     kind: 'photo',
     project: 'MentorGo',
-    achievement: 'Top 3 at IT Park Startup Day',
+    achievement: '1st Place at IT Park Startup Day',
   },
   {
     id: 'achievements-top-100-students-uzbekistan-01-national-group-photo',

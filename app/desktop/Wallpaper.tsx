@@ -32,7 +32,7 @@ const PALETTES: Record<SkyPhase, Palette> = {
     hillBack: ['#1b3b32', '#122a24'],
     hillMain: ['#22502f', '#12301c'],
     hillFront: ['#1c4527', '#0e2615'],
-    light: {x: 1240, y: 170, r: 34, color: '#f4f1df', glow: '#9fb8ff'},
+    light: {x: 1240, y: 170, r: 30, color: '#f4f1df', glow: '#7f9be0'},
     clouds: 0.18,
     stars: 1,
     haze: '#3a5f9a',
@@ -110,6 +110,10 @@ export default function Wallpaper({phase}: {phase: SkyPhase}) {
           <stop offset="1" stopColor={p.hillFront[1]}/>
         </radialGradient>
         <linearGradient id="wp-haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={p.haze} stopOpacity="0"/><stop offset="1" stopColor={p.haze} stopOpacity="0.55"/></linearGradient>
+        <mask id="wp-crescent" maskUnits="userSpaceOnUse" x="0" y="0" width="1600" height="1000">
+          <rect width="1600" height="1000" fill="#fff"/>
+          <circle cx={p.light.x + 14} cy={p.light.y - 10} r={p.light.r * 0.88} fill="#000"/>
+        </mask>
         <filter id="wp-blur" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
         <filter id="wp-grain">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
@@ -126,8 +130,7 @@ export default function Wallpaper({phase}: {phase: SkyPhase}) {
       )}
 
       <circle cx={p.light.x} cy={p.light.y} r={p.light.r * 5} fill="url(#wp-glow)"/>
-      <circle cx={p.light.x} cy={p.light.y} r={p.light.r} fill={p.light.color}/>
-      {phase === 'night' && <circle cx={p.light.x + 13} cy={p.light.y - 9} r={p.light.r * 0.86} fill={p.sky[0]} opacity="0.92"/>}
+      <circle cx={p.light.x} cy={p.light.y} r={p.light.r} fill={p.light.color} mask={phase === 'night' ? 'url(#wp-crescent)' : undefined}/>
 
       <g className="wp-clouds" opacity={p.clouds} filter="url(#wp-blur)">
         <ellipse cx="300" cy="190" rx="210" ry="38" fill="#fff" opacity="0.85"/>
@@ -143,7 +146,6 @@ export default function Wallpaper({phase}: {phase: SkyPhase}) {
       <path d="M0 640 C 260 560 520 600 760 610 C 1010 620 1240 560 1600 590 L1600 1000 L0 1000 Z" fill="url(#wp-back)"/>
       <path d="M-40 1000 L-40 760 C 180 640 470 560 820 560 C 1130 560 1390 640 1640 720 L1640 1000 Z" fill="url(#wp-main)"/>
       <path d="M-60 1000 L-60 820 C 160 760 420 760 640 820 C 790 862 900 930 960 1000 Z" fill="url(#wp-front)" opacity="0.95"/>
-      <path d="M260 600 C 480 575 700 568 900 575" stroke="#fff" strokeOpacity="0.16" strokeWidth="3" fill="none"/>
 
       <rect width="1600" height="1000" filter="url(#wp-grain)"/>
     </svg>
