@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a7be0"/><stop offset=".6" stop-color="#6fb6f2"/><stop offset="1" stop-color="#c6e6ff"/></linearGradient>
+    <linearGradient id="hill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd05a"/><stop offset="1" stop-color="#2c8a2a"/></linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="orb"><circle cx="32" cy="32" r="27"/></clipPath>
+  </defs>
+  <circle cx="32" cy="32" r="29.5" fill="#fff" opacity=".9"/>
+  <g clip-path="url(#orb)">
+    <rect width="64" height="64" fill="url(#sky)"/>
+    <circle cx="42" cy="22" r="7" fill="#fff7d1"/>
+    <circle cx="42" cy="22" r="11" fill="#fff3b8" opacity=".35"/>
+    <path d="M0 44 C 14 34 30 33 46 38 C 54 40 60 43 64 46 L64 64 L0 64 Z" fill="url(#hill)"/>
+    <path d="M0 52 C 12 47 24 48 34 54 L34 64 L0 64 Z" fill="#3b9b33" opacity=".7"/>
+    <ellipse cx="28" cy="17" rx="20" ry="11" fill="url(#gloss)"/>
+  </g>
+  <circle cx="32" cy="32" r="27" fill="none" stroke="#0d4a1f" stroke-opacity=".35" stroke-width="1.2"/>
+</svg>

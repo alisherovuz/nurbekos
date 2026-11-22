@@ -170,7 +170,7 @@ const DEFAULT_TITLES: Partial<Record<AppId, string>> = {
 };
 
 const WINDOW_SIZES: Partial<Record<AppId, [number, number]>> = {
-  welcome: [880, 600],
+  welcome: [880, 540],
   contact: [660, 580],
   projects: [980, 640],
   experience: [900, 600],
@@ -1084,7 +1084,7 @@ export default function Desktop({content, initialRoute, initialHour, skyLocked =
 
       {boot && (
         <div className="boot" role="status" aria-label="NurbekOS is starting">
-          <div className="boot-logo"><span className="brand-mark">nurbek<b>OS</b></span><small>{profile.name}</small></div>
+          <div className="boot-logo"><img className="boot-mark" src={`${I}/nurbekos-mark.svg`} alt="" width={72} height={72}/><span className="brand-mark">nurbek<b>OS</b></span><small>{profile.name}</small></div>
           <div className="boot-progress" aria-hidden="true"><span/></div>
           <button type="button" onClick={() => setBoot(false)}>Skip startup ›</button>
         </div>
@@ -1234,10 +1234,6 @@ export default function Desktop({content, initialRoute, initialHour, skyLocked =
                     <p className="welcome-pitch">{profile.pitch}</p>
                     <div className="welcome-stats">
                       {profile.stats.map((stat, i) => <div key={stat.label} style={{animationDelay: `${0.15 + i * 0.08}s`}}><strong>{stat.value}</strong><span>{stat.label}</span></div>)}
-                    </div>
-                    <div className="welcome-now">
-                      <h3><i className="now-dot" aria-hidden="true"/>What I’m working on</h3>
-                      <ul>{profile.now.map(item => <li key={item}>{item}</li>)}</ul>
                     </div>
                     <div className="welcome-cta">
                       <button type="button" className="xp-cta primary" onClick={() => openFrom(win.id, 'projects')}><Icon src={`${I}/my-projects.svg`} size={22}/>See my work</button>
@@ -1704,7 +1700,7 @@ export default function Desktop({content, initialRoute, initialHour, skyLocked =
                 const experience = experiences.find(item => item.id === win.experience);
                 if (!experience) return null;
                 const experiencePhotos = photos.filter(photo => photo.experience === experience.id).slice(0, 4);
-                return <div className="properties-body"><div className="property-tabs"><button type="button" className="active">General</button><button type="button">Summary</button></div><div className="property-head experience-property-head"><BrandIcon name={experience.organization} logo={experience.logo} size={56}/><div className="experience-property-title"><b>{experience.organization}</b><span>{experience.role}</span></div></div><div className="property-separator"/><dl className="property-grid"><dt>Role:</dt><dd>{experience.role}</dd><dt>Period:</dt><dd>{experience.period}</dd><dt>Location:</dt><dd>{experience.location}</dd>{experience.website && <><dt>Website:</dt><dd><a href={experience.website} target="_blank" rel="noopener noreferrer">{experience.website}</a></dd></>}</dl><div className="property-separator"/><p>{experience.description}</p><ul className="experience-highlights">{experience.highlights.map(item => <li key={item}>{item}</li>)}</ul>{experiencePhotos.length > 0 && <div className="property-photo-strip">{experiencePhotos.map(photo => <button type="button" key={photo.id} onClick={() => openPhoto(photo.id)}><img src={photo.src} alt={photo.alt} loading="lazy"/></button>)}</div>}{experience.relatedProject && <div className="linked-project"><button type="button" className="xp-button" onClick={() => openProject(experience.relatedProject!)}>Open related project: {experience.relatedProject}</button></div>}<div className="properties-actions"><button type="button" className="xp-button" onClick={() => close(win.id)}>OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button></div></div>;
+                return <div className="properties-body"><div className="property-tabs"><button type="button" className="active">General</button><button type="button">Summary</button></div><div className="property-head experience-property-head"><BrandIcon name={experience.organization} logo={experience.logo} size={56}/><div className="experience-property-title"><b>{experience.organization}</b><span>{experience.role}</span></div></div><div className="property-separator"/><dl className="property-grid"><dt>Role:</dt><dd>{experience.role}</dd><dt>Period:</dt><dd>{experience.period}</dd><dt>Location:</dt><dd>{experience.location}</dd>{experience.website && <><dt>Website:</dt><dd><a href={experience.website} target="_blank" rel="noopener noreferrer">{experience.website}</a></dd></>}</dl><div className="property-separator"/><p>{experience.description}</p>{experience.highlights.length > 0 && <ul className="experience-highlights">{experience.highlights.map(item => <li key={item}>{item}</li>)}</ul>}{experiencePhotos.length > 0 && <div className="property-photo-strip">{experiencePhotos.map(photo => <button type="button" key={photo.id} onClick={() => openPhoto(photo.id)}><img src={photo.src} alt={photo.alt} loading="lazy"/></button>)}</div>}{experience.relatedProject && <div className="linked-project"><button type="button" className="xp-button" onClick={() => openProject(experience.relatedProject!)}>Open related project: {experience.relatedProject}</button></div>}<div className="properties-actions"><button type="button" className="xp-button" onClick={() => close(win.id)}>OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button></div></div>;
               })()}
             </div>
 
@@ -1756,7 +1752,7 @@ export default function Desktop({content, initialRoute, initialHour, skyLocked =
       {badgeToast && <div className="badge-toast" role="status"><div className="badge-toast-icon">★</div><div><b>Achievement unlocked!</b><span>{badgeToast.name}</span></div></div>}
 
       <footer className="taskbar" onClick={event => event.stopPropagation()}>
-        <button type="button" className={`start-button ${start ? 'pressed' : ''}`} onClick={() => {setStart(value => !value); setContext(null);}} aria-expanded={start}><span className="windows-mark" aria-hidden="true">▦</span><i>start</i></button>
+        <button type="button" className={`start-button ${start ? 'pressed' : ''}`} onClick={() => {setStart(value => !value); setContext(null);}} aria-expanded={start}><img className="start-mark" src={`${I}/nurbekos-mark.svg`} alt="" width={24} height={24} draggable={false}/><i>start</i></button>
         <div className="task-apps" aria-label="Open windows">
           {windows.map(win => <button type="button" key={win.id} className={`${active === win.id && !win.minimized ? 'active-task' : ''}`} onClick={() => focus(win.id)} title={win.title}><Icon src={windowIcon(win)} size={17}/><span>{win.title}</span></button>)}
         </div>
