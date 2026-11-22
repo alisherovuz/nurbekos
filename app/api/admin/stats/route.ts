@@ -1,4 +1,4 @@
-import {getStats} from '@/lib/analytics';
+import {getStats, resetStats} from '@/lib/analytics';
 import {isAdminRequest, unauthorized} from '@/lib/auth';
 import {listMessages} from '@/lib/messages';
 
@@ -10,4 +10,10 @@ export async function GET(req: Request) {
   const days = Math.min(90, Math.max(7, Number(url.searchParams.get('days')) || 30));
   const [stats, messages] = await Promise.all([getStats(days), listMessages()]);
   return Response.json({...stats, unread: messages.filter(m => !m.read).length});
+}
+
+export async function DELETE(req: Request) {
+  if (!isAdminRequest(req)) return unauthorized();
+  await resetStats();
+  return Response.json({ok: true});
 }

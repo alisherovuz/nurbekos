@@ -4,6 +4,7 @@ import {getContent} from '@/lib/content';
 import type {SiteContent} from '../data';
 import Desktop from '../desktop/Desktop';
 import {parseSegments, projectSlug, type Route} from '../desktop/routes';
+import {tashkentHour} from '../desktop/Wallpaper';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,7 +102,7 @@ export default async function Page({params}: Props) {
         <h2>Achievements</h2>
         <ul>{awards.map(a => <li key={`${a.year}-${a.name}`}>{a.year}: {a.name}</li>)}</ul>
       </div>
-      <Desktop content={content} initialRoute={route}/>
+      <Desktop content={content} initialRoute={route} initialHour={tashkentHour()}/>
     </>
   );
 }

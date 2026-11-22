@@ -1,5 +1,6 @@
 import crypto from 'crypto';
-import {appendLine, clientIp, localSecret, readLines} from './store';
+import {promises as fs} from 'fs';
+import {appendLine, clientIp, dataPath, localSecret, readLines} from './store';
 
 export type EventType = 'view' | 'open' | 'click' | 'cv' | 'contact' | 'game';
 
@@ -197,3 +198,8 @@ export async function getStats(days = 30) {
 }
 
 export type Stats = Awaited<ReturnType<typeof getStats>>;
+
+/** Deletes all recorded visits and events. Messages are kept. */
+export async function resetStats() {
+  await fs.rm(dataPath('events'), {recursive: true, force: true});
+}

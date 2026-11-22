@@ -190,6 +190,13 @@ function Dashboard({onUnread, onOpenMessages}: {onUnread: (n: number) => void; o
     return () => window.clearInterval(timer);
   }, [load]);
 
+  async function reset() {
+    if (!window.confirm('Delete all visitor stats and start counting from zero? Messages are kept. This cannot be undone.')) return;
+    const res = await fetch('/api/admin/stats', {method: 'DELETE'});
+    if (res.ok) void load();
+    else setError('Could not reset stats.');
+  }
+
   if (error) return <div className="cp-empty error">{error}</div>;
   if (!stats) return <div className="cp-empty">Loading stats…</div>;
 
@@ -204,6 +211,7 @@ function Dashboard({onUnread, onOpenMessages}: {onUnread: (n: number) => void; o
           {[7, 30, 90].map(d => <button type="button" key={d} className={days === d ? 'on' : ''} onClick={() => setDays(d)}>{d} days</button>)}
         </div>
         <button type="button" className="xp-button" onClick={() => void load()}>Refresh</button>
+        <button type="button" className="xp-button danger" onClick={() => void reset()}>Reset stats</button>
       </div>
 
       {empty && <div className="cp-note">No visits recorded yet. Stats start counting as soon as the site is live on Livops — share a link and come back.</div>}
@@ -295,7 +303,7 @@ function TrafficChart({series}: {series: StatsResponse['series']}) {
             <rect x={P.l + i * step + step * 0.18} width={step * 0.64} y={y(s.visitors)} height={Math.max(0, H - P.b - y(s.visitors))} rx={2} className="bar-v">
               <title>{`${s.date}: ${s.visitors} visitors, ${s.views} page views, ${s.opens} windows opened`}</title>
             </rect>
-            {i % every === 0 && <text x={P.l + i * step + step / 2} y={H - 8} textAnchor="middle" className="axis">{s.date.slice(5).replace('-', '/')}</text>}
+            {(series.length - 1 - i) % every === 0 && <text x={P.l + i * step + step / 2} y={H - 8} textAnchor="middle" className="axis">{s.date.slice(5).replace('-', '/')}</text>}
           </g>
         ))}
         <polyline points={line} className="line-views"/>
