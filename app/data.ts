@@ -147,7 +147,6 @@ export const projects: Project[] = [
     metrics: [
       {value: '72h', label: 'from zero to working product'},
       {value: '1st', label: 'National AI Hackathon, EdTech'},
-      {value: 'Startup Garage', label: 'resident team'},
     ],
   },
   {

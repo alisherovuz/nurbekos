@@ -207,7 +207,7 @@ function placeWindow(app: AppId, index: number, ssrSafe = false) {
   const height = Math.min(Math.round(baseH * scale), vh - 28);
   const step = (index % 5) * 28;
   // Leave the Tashkent gadget on the right visible on wide screens.
-  const shift = vw > 1100 ? 150 : 0;
+  const shift = vw > 1100 ? 115 : 0;
   return {
     x: Math.max(8, Math.round((vw - width) / 2) - 56 - shift + step),
     y: Math.max(8, Math.round((vh - height) / 2) - 40 + step),

@@ -800,7 +800,8 @@ html,body{font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.wp-clouds,.wp-stars circle{animation:none}}
 
-@media(min-width:1101px){.xp-window.centered{left:calc(50% - 150px)}}
+@media(min-width:1101px){.xp-window.centered{left:calc(50% - 115px)}}
 .pc-title p{display:flex;flex-wrap:wrap;align-items:center;gap:4px 0}
 .pc-role{color:var(--ink);font-weight:bold}
 .pc-role:after{content:"";display:inline-block;width:1px;height:12px;background:#c9d3e0;margin:0 9px;vertical-align:-1px}
+.pc-metrics strong{overflow-wrap:anywhere}

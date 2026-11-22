@@ -41,6 +41,8 @@ function describe(route: Route, content: SiteContent) {
     case 'about': return {title: `About · ${profile.name}`, description: profile.bio, og: {title: profile.name, subtitle: profile.bio, kicker: 'About', path: '/about'}};
     case 'contact': return {title: `Contact · ${profile.name}`, description: `Send ${profile.name} a message about collaboration, speaking, mentoring or anything else.`, og: {title: 'Say hello', subtitle: 'Collaboration · Speaking · Mentoring', kicker: profile.name, path: '/contact'}};
     case 'gallery': return {title: `Pictures · ${profile.name}`, description: `Photos from projects, events, hackathons and achievements.`, og: {title: 'My Pictures', subtitle: 'Projects · Events · Achievements', kicker: profile.name, path: '/pictures'}};
+    case 'recycle': return {title: `Archive · ${profile.name}`, description: `Past projects by ${profile.name}: ${content.projects.filter(p => p.status === 'archived').map(p => p.name).join(', ')}.`, og: {title: 'Archive', subtitle: 'Past projects and lessons', kicker: profile.name, path: '/archive'}};
+    case 'documents': return {title: `Documents · ${profile.name}`, description: `${profile.name}’s CV and documents.`, og: {title: 'My Documents', subtitle: 'CV and documents', kicker: profile.name, path: '/documents'}};
     case 'games': return {title: `Games · nurbekOS`, description: 'Play Snake and Minesweeper inside nurbekOS.', og: {title: 'Games', subtitle: 'Snake.exe · Minesweeper.exe', kicker: 'nurbekOS', path: '/games'}};
     default: break;
   }
