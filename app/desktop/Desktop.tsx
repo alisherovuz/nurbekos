@@ -1077,8 +1077,9 @@ export default function Desktop({content, initialRoute}: {content: SiteContent; 
             key={win.id}
             className={`xp-window ${active === win.id ? 'is-active' : ''} ${win.maximized ? 'maximized' : ''} ${win.centered && !win.maximized ? 'centered' : ''} app-${win.app}`}
             style={win.maximized ? {zIndex: 10 + index} : {
-              left: win.centered ? undefined : win.x,
-              top: win.centered ? undefined : win.y,
+              // Keep windows fully on screen, whatever the viewport size.
+              left: win.centered ? undefined : `max(4px, min(${win.x}px, calc(100vw - min(${win.width}px, calc(100vw - 16px)) - 8px)))`,
+              top: win.centered ? undefined : `max(4px, min(${win.y}px, calc(100dvh - min(${win.height}px, calc(100dvh - 55px)) - 42px)))`,
               width: `min(${win.width}px, calc(100vw - 16px))`,
               height: `min(${win.height}px, calc(100dvh - 55px))`,
               zIndex: 10 + index,
@@ -1091,13 +1092,10 @@ export default function Desktop({content, initialRoute}: {content: SiteContent; 
               className="xp-titlebar"
               onPointerDown={event => {
                 if (win.maximized || (event.target as HTMLElement).closest('button')) return;
-                let {x, y} = win;
-                if (win.centered) {
-                  // Convert a centred window to absolute coordinates before dragging.
-                  const rect = (event.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
-                  x = rect.left; y = rect.top;
-                  patch(win.id, {centered: false, x, y});
-                }
+                // Start from where the window actually is on screen (it may be centred or clamped).
+                const rect = (event.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                const x = rect.left, y = rect.top;
+                if (win.centered || x !== win.x || y !== win.y) patch(win.id, {centered: false, x, y});
                 drag.current = {id: win.id, startX: event.clientX, startY: event.clientY, x, y};
               }}
               onDoubleClick={() => patch(win.id, {maximized: !win.maximized})}
