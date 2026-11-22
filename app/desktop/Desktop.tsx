@@ -209,7 +209,8 @@ function placeWindow(app: AppId, index: number, ssrSafe = false) {
   // Leave the Tashkent gadget on the right visible on wide screens.
   const shift = vw > 1100 ? 115 : 0;
   return {
-    x: Math.max(8, Math.round((vw - width) / 2) - 56 - shift + step),
+    // Never cover the desktop icon column on wide screens.
+    x: Math.max(vw > 1100 ? 112 : 8, Math.min(Math.round((vw - width) / 2) - 56 - shift + step, vw - width - 8)),
     y: Math.max(8, Math.round((vh - height) / 2) - 40 + step),
     width,
     height,
