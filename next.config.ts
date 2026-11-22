@@ -11,6 +11,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Livops runs the standalone server, which only ships traced files.
+  // Bundle the whole public/ folder (icons, media, CV) with every route.
+  outputFileTracingIncludes: {'/*': ['./public/**/*']},
   async headers() {
     return [{source: '/(.*)', headers: securityHeaders}];
   },
