@@ -1392,15 +1392,16 @@ export default function Desktop({content, initialRoute, initialHour, skyLocked =
                         const index = projects.findIndex(item => item.name === project.name);
                         const prev = projects[index - 1];
                         const next = projects[index + 1];
-                        const go = (target: Project) => {
+                        const go = (target: Project, from: HTMLElement) => {
+                          from.closest('.project-center')?.scrollTo({top: 0});
                           patch(win.id, {project: target.name, title: `${target.name} — Project Center`});
                           const path = pathFor({app: 'projectDetail', project: target.name}, projects);
                           if (path) track('open', {path});
                           sfx('click');
                         };
                         return <nav className="pc-nav" aria-label="More projects">
-                          {prev ? <button type="button" onClick={() => go(prev)}><small>Previous</small><b>‹ {prev.name}</b></button> : <span/>}
-                          {next ? <button type="button" className="next" onClick={() => go(next)}><small>Next</small><b>{next.name} ›</b></button> : <span/>}
+                          {prev ? <button type="button" onClick={event => go(prev, event.currentTarget)}><small>Previous</small><b>‹ {prev.name}</b></button> : <span/>}
+                          {next ? <button type="button" className="next" onClick={event => go(next, event.currentTarget)}><small>Next</small><b>{next.name} ›</b></button> : <span/>}
                         </nav>;
                       })()}
                     </article>
