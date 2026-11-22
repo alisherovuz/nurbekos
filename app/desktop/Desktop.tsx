@@ -206,8 +206,10 @@ function placeWindow(app: AppId, index: number, ssrSafe = false) {
   const width = Math.min(Math.round(baseW * scale), vw - 32);
   const height = Math.min(Math.round(baseH * scale), vh - 28);
   const step = (index % 5) * 28;
+  // Leave the Tashkent gadget on the right visible on wide screens.
+  const shift = vw > 1100 ? 150 : 0;
   return {
-    x: Math.max(8, Math.round((vw - width) / 2) - 56 + step),
+    x: Math.max(8, Math.round((vw - width) / 2) - 56 - shift + step),
     y: Math.max(8, Math.round((vh - height) / 2) - 40 + step),
     width,
     height,
@@ -285,7 +287,7 @@ function statusText(status: Project['status']) {
 type MenuName = 'File' | 'Edit' | 'View' | 'Favorites' | 'Tools' | 'Help';
 const TOPICS = ['Collaboration', 'Speaking or event', 'Mentoring', 'Investment', 'Just saying hi'];
 
-export default function Desktop({content, initialRoute, initialHour}: {content: SiteContent; initialRoute: Route; initialHour: number}) {
+export default function Desktop({content, initialRoute, initialHour, skyLocked = false}: {content: SiteContent; initialRoute: Route; initialHour: number; skyLocked?: boolean}) {
   const {profile, projects, experiences, awards} = content;
   const [windows, setWindows] = useState<WindowState[]>(() => initialWindows(initialRoute, content));
   const [active, setActive] = useState(() => {
@@ -339,7 +341,7 @@ export default function Desktop({content, initialRoute, initialHour}: {content: 
       const now = new Date();
       setTime(now.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}));
       setToday(now.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'}));
-      setSkyHour(tashkentHour(now));
+      if (!skyLocked) setSkyHour(tashkentHour(now));
       setTashkentTime(now.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Tashkent'}));
     };
     tick();
@@ -1364,7 +1366,7 @@ export default function Desktop({content, initialRoute, initialHour}: {content: 
                         <div className="pc-logo">{project.logo ? <img src={project.logo} alt=""/> : <span>{project.name[0]}</span>}</div>
                         <div className="pc-title">
                           <h2>{project.name}</h2>
-                          <p>{project.role ? `${project.role}, ${project.kind.charAt(0).toLowerCase()}${project.kind.slice(1)}` : project.kind}<span className={`pc-status s-${project.status}`}>{statusText(project.status)}</span></p>
+                          <p>{project.role && <span className="pc-role">{project.role}</span>}<span>{project.kind}</span><span className={`pc-status s-${project.status}`}>{statusText(project.status)}</span></p>
                         </div>
                         <div className="pc-actions">
                           {project.url && <a className="xp-cta primary" href={project.url} target="_blank" rel="noopener noreferrer" onClick={() => outbound(project.url, `${project.name} website`)}>Visit {hostOf(project.url)}</a>}

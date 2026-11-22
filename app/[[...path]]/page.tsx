@@ -8,7 +8,10 @@ import {tashkentHour} from '../desktop/Wallpaper';
 
 export const dynamic = 'force-dynamic';
 
-type Props = {params: Promise<{path?: string[]}>};
+type Props = {params: Promise<{path?: string[]}>; searchParams: Promise<{sky?: string}>};
+
+// ?sky=dawn|day|golden|dusk|night previews the wallpaper at another time of day.
+const SKY_PREVIEW: Record<string, number> = {dawn: 6, day: 12, golden: 18, dusk: 20, night: 2};
 
 function describe(route: Route, content: SiteContent) {
   const {profile} = content;
@@ -65,7 +68,9 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
   };
 }
 
-export default async function Page({params}: Props) {
+export default async function Page({params, searchParams}: Props) {
+  const {sky} = await searchParams;
+  const skyPreview = sky && sky in SKY_PREVIEW ? SKY_PREVIEW[sky] : undefined;
   const {content, route} = await resolve(params);
   if (!route) notFound();
   const {profile, projects, experiences, awards} = content;
@@ -102,7 +107,7 @@ export default async function Page({params}: Props) {
         <h2>Achievements</h2>
         <ul>{awards.map(a => <li key={`${a.year}-${a.name}`}>{a.year}: {a.name}</li>)}</ul>
       </div>
-      <Desktop content={content} initialRoute={route} initialHour={tashkentHour()}/>
+      <Desktop content={content} initialRoute={route} initialHour={skyPreview ?? tashkentHour()} skyLocked={skyPreview !== undefined}/>
     </>
   );
 }
