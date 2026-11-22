@@ -1,9 +1,14 @@
 'use client';
 
-import {type FormEvent, type MouseEvent as ReactMouseEvent, useEffect, useMemo, useRef, useState} from 'react';
-import {awards, experiences, photos, profile, projects, type Project} from './data';
+import {type FormEvent, type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useMemo, useRef, useState} from 'react';
+import {photos, type Project, type SiteContent} from '../data';
+import {pathFor, type Route} from './routes';
+import {play, setSoundEnabled, type SoundName} from './sounds';
+import {track} from './track';
 
 type AppId =
+  | 'welcome'
+  | 'contact'
   | 'projects'
   | 'experience'
   | 'experienceProperties'
@@ -36,6 +41,7 @@ type WindowState = {
   height: number;
   minimized: boolean;
   maximized: boolean;
+  centered?: boolean;
   url?: string;
   project?: string;
   experience?: string;
@@ -122,9 +128,11 @@ type SearchResult = {
 const I = '/icons/xp';
 
 const shortcuts: {id: AppId; label: string; icon: string}[] = [
+  {id: 'welcome', label: 'Start Here', icon: `${I}/welcome.svg`},
   {id: 'projects', label: 'My Projects', icon: `${I}/my-projects.svg`},
   {id: 'experience', label: 'Work Experience', icon: `${I}/folder.svg`},
   {id: 'achievements', label: 'Achievements', icon: `${I}/achievements.svg`},
+  {id: 'contact', label: 'Contact Me', icon: `${I}/mail.svg`},
   {id: 'gallery', label: 'My Pictures', icon: `${I}/my-pictures.svg`},
   {id: 'documents', label: 'My Documents', icon: `${I}/my-documents.svg`},
   {id: 'about', label: 'My Computer', icon: `${I}/my-computer.svg`},
@@ -132,7 +140,88 @@ const shortcuts: {id: AppId; label: string; icon: string}[] = [
   {id: 'recycle', label: 'Recycle Bin', icon: `${I}/recycle-bin.svg`},
 ];
 
+const DEFAULT_TITLES: Partial<Record<AppId, string>> = {
+  welcome: 'Welcome to nurbekOS',
+  contact: 'New Message — Contact Nurbek',
+  gallery: 'My Pictures',
+  search: 'Search Results',
+  run: 'Run',
+  terminal: 'NurbekOS Terminal',
+  badges: 'NurbekOS Achievements',
+  snake: 'Snake.exe',
+  minesweeper: 'Minesweeper.exe',
+};
+
+const WINDOW_SIZES: Partial<Record<AppId, [number, number]>> = {
+  welcome: [780, 560],
+  contact: [640, 560],
+  browser: [960, 650],
+  gallery: [850, 590],
+  photoViewer: [900, 650],
+  about: [640, 545],
+  run: [460, 220],
+  search: [790, 540],
+  projectDetail: [860, 620],
+  achievementDetail: [780, 580],
+  properties: [570, 520],
+  experienceProperties: [610, 560],
+  games: [720, 520],
+  snake: [680, 620],
+  minesweeper: [520, 590],
+  terminal: [760, 500],
+  badges: [650, 480],
+};
+
+type LaunchOptions = {title?: string; url?: string; project?: string; experience?: string; photo?: string; achievement?: string};
+
+function makeWindow(id: string, app: AppId, opts: LaunchOptions, index: number): WindowState {
+  const size = WINDOW_SIZES[app] ?? [760, 540];
+  return {
+    id,
+    app,
+    title: opts.title || DEFAULT_TITLES[app] || shortcuts.find(item => item.id === app)?.label || 'NurbekOS',
+    x: Math.max(10, 110 + (index % 6) * 30),
+    y: Math.max(16, 36 + (index % 6) * 26),
+    width: size[0],
+    height: size[1],
+    minimized: false,
+    maximized: false,
+    centered: app === 'welcome' || app === 'contact',
+    url: opts.url,
+    project: opts.project,
+    experience: opts.experience,
+    photo: opts.photo,
+    achievement: opts.achievement,
+  };
+}
+
+/** Windows that show the same thing are reused instead of stacking duplicates. */
+function windowKey(app: AppId, opts: LaunchOptions) {
+  if (app === 'photoViewer' || app === 'search' || app === 'run' || app === 'terminal') return app;
+  return [app, opts.project, opts.experience, opts.achievement, opts.url].filter(Boolean).join('|');
+}
+
+function initialWindows(route: Route, content: SiteContent): WindowState[] {
+  const list: WindowState[] = [];
+  const add = (app: AppId, opts: LaunchOptions = {}) => list.push(makeWindow(`init-${list.length}`, app, opts, list.length));
+  if (route.app === 'projectDetail' && route.project) {
+    add('projects');
+    add('projectDetail', {title: `${route.project} — Project Center`, project: route.project});
+  } else if (route.app === 'experienceProperties' && route.experience) {
+    add('experience');
+    const experience = content.experiences.find(e => e.id === route.experience);
+    add('experienceProperties', {experience: route.experience, title: `${experience?.organization || 'Experience'} Properties`});
+  } else {
+    add(route.app as AppId);
+  }
+  return list;
+}
+
 let serial = 0;
+
+function Toast({children}: {children: ReactNode}) {
+  return <div className="badge-toast info-toast" role="status">{children}</div>;
+}
 
 function Icon({src, size = 32, className = '', alt = ''}: {src: string; size?: number; className?: string; alt?: string}) {
   return <img className={`xp-icon ${className}`} src={src} width={size} height={size} alt={alt} draggable={false}/>;
@@ -165,14 +254,27 @@ function statusText(status: Project['status']) {
   return 'Archived project';
 }
 
-export default function Home() {
-  const [windows, setWindows] = useState<WindowState[]>([]);
-  const [active, setActive] = useState('');
+type MenuName = 'File' | 'Edit' | 'View' | 'Favorites' | 'Tools' | 'Help';
+const TOPICS = ['Collaboration', 'Speaking or event', 'Mentoring', 'Investment', 'Just saying hi'];
+
+export default function Desktop({content, initialRoute}: {content: SiteContent; initialRoute: Route}) {
+  const {profile, projects, experiences, awards} = content;
+  const [windows, setWindows] = useState<WindowState[]>(() => initialWindows(initialRoute, content));
+  const [active, setActive] = useState(() => {
+    const list = initialWindows(initialRoute, content);
+    return list[list.length - 1]?.id || '';
+  });
   const [start, setStart] = useState(false);
   const [time, setTime] = useState('');
+  const [today, setToday] = useState('');
   const [sound, setSound] = useState(false);
   const [selected, setSelected] = useState('');
   const [boot, setBoot] = useState(true);
+  const [menu, setMenu] = useState<{win: string; name: MenuName} | null>(null);
+  const [toast, setToast] = useState('');
+  const [showWelcomeAtStartup, setShowWelcomeAtStartup] = useState(true);
+  const [contactForm, setContactForm] = useState({name: '', contact: '', topic: TOPICS[0], message: '', website: ''});
+  const [contactState, setContactState] = useState<{status: 'idle' | 'sending' | 'sent' | 'error'; error?: string}>({status: 'idle'});
   const [context, setContext] = useState<ContextMenuState>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [foldersPane, setFoldersPane] = useState(true);
@@ -203,17 +305,110 @@ export default function Home() {
   const resize = useRef<{id: string; startX: number; startY: number; width: number; height: number} | null>(null);
 
   useEffect(() => {
-    const tick = () => setTime(new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}));
+    const tick = () => {
+      const now = new Date();
+      setTime(now.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'}));
+      setToday(now.toLocaleDateString('en-US', {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'}));
+    };
     tick();
     const interval = window.setInterval(tick, 30000);
     return () => window.clearInterval(interval);
   }, []);
 
+  // Boot: shorter when someone arrives on a deep link, skipped for reduced motion.
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const timeout = window.setTimeout(() => setBoot(false), reduced ? 150 : 1150);
+    const deepLink = initialRoute.app !== 'welcome';
+    const timeout = window.setTimeout(() => {
+      setBoot(false);
+      play('startup');
+    }, reduced ? 120 : deepLink ? 450 : 1150);
     return () => window.clearTimeout(timeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Saved preferences + the first page view.
+  useEffect(() => {
+    try {
+      const soundOn = window.localStorage.getItem('nurbekos-sound') === 'on';
+      setSound(soundOn);
+      setSoundEnabled(soundOn);
+      const hideWelcome = window.localStorage.getItem('nurbekos-hide-welcome') === '1';
+      setShowWelcomeAtStartup(!hideWelcome);
+      if (hideWelcome && initialRoute.app === 'welcome') {
+        setWindows(current => current.filter(win => win.app !== 'welcome'));
+        setActive('');
+      }
+    } catch { /* storage can be unavailable */ }
+    track('view', {path: window.location.pathname, ref: document.referrer || undefined});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the address bar and tab title in sync with the window in front, so every view can be shared.
+  useEffect(() => {
+    const current = windows.find(win => win.id === active && !win.minimized);
+    const path = current ? pathFor(current, projects) : '/';
+    if (!path) return;
+    if (window.location.pathname !== path) window.history.replaceState(null, '', path);
+    const label = current && current.app !== 'welcome' ? current.title.replace(/ - (Microsoft Internet Explorer|Windows Picture and Fax Viewer)$/, '') : '';
+    document.title = label ? `${label} · Nurbek Alisherov` : `Nurbek Alisherov — Founder & AI builder · nurbekOS`;
+  }, [active, windows, projects]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(''), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
+  function sfx(name: SoundName) {
+    play(name);
+  }
+
+  function toggleSound() {
+    const next = !sound;
+    setSound(next);
+    setSoundEnabled(next);
+    try { window.localStorage.setItem('nurbekos-sound', next ? 'on' : 'off'); } catch { /* ignore */ }
+    if (next) play('notify', true);
+    setToast(next ? 'Sounds on' : 'Sounds off');
+  }
+
+  function toggleWelcomeAtStartup(value: boolean) {
+    setShowWelcomeAtStartup(value);
+    try { window.localStorage.setItem('nurbekos-hide-welcome', value ? '0' : '1'); } catch { /* ignore */ }
+  }
+
+  function outbound(url: string, label?: string) {
+    track('click', {target: label || url.replace(/^https?:\/\//, '').replace(/\/$/, '')});
+  }
+
+  async function copyLink(win?: WindowState) {
+    const path = win ? pathFor(win, projects) || '/' : window.location.pathname;
+    const url = `${window.location.origin}${path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setToast('Link copied — paste it anywhere');
+    } catch {
+      setToast(url);
+    }
+    sfx('click');
+  }
+
+  async function sendMessage(event: FormEvent) {
+    event.preventDefault();
+    setContactState({status: 'sending'});
+    try {
+      const res = await fetch('/api/contact', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(contactForm)});
+      const data = (await res.json().catch(() => ({}))) as {error?: string};
+      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      setContactState({status: 'sent'});
+      setContactForm({name: '', contact: '', topic: TOPICS[0], message: '', website: ''});
+      sfx('send');
+    } catch (error) {
+      setContactState({status: 'error', error: error instanceof Error ? error.message : 'Something went wrong.'});
+      sfx('error');
+    }
+  }
 
   useEffect(() => {
     const move = (event: PointerEvent) => {
@@ -280,6 +475,7 @@ export default function Home() {
       if (event.key === 'Escape') {
         setStart(false);
         setContext(null);
+        setMenu(null);
         return;
       }
       if (!typing && event.key === 'F3') {
@@ -411,42 +607,26 @@ export default function Home() {
       setPhotoZoom(1);
       setPhotoRotation(0);
     }
+    const opts: LaunchOptions = {title, url, project, experience, photo, achievement};
+    const key = windowKey(app, opts);
+    const existing = windows.find(win => windowKey(win.app, win) === key);
+    if (existing) {
+      // Reuse the open window instead of stacking a duplicate.
+      setWindows(current => {
+        const win = current.find(item => item.id === existing.id);
+        if (!win) return current;
+        const updated = {...win, ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v !== undefined)), minimized: false};
+        return [...current.filter(item => item.id !== existing.id), updated];
+      });
+      setActive(existing.id);
+      return;
+    }
     const id = `win-${++serial}`;
-    const windowSizes: Partial<Record<AppId, [number, number]>> = {
-      browser: [960, 650],
-      gallery: [850, 590],
-      photoViewer: [900, 650],
-      about: [640, 545],
-      run: [460, 220],
-      search: [790, 540],
-      projectDetail: [840, 610],
-      achievementDetail: [780, 580],
-      properties: [570, 520],
-      experienceProperties: [610, 545],
-      games: [720, 520],
-      snake: [680, 620],
-      minesweeper: [520, 590],
-      terminal: [760, 500],
-      badges: [650, 480],
-    };
-    const size = windowSizes[app] ?? [760, 540];
-    setWindows(current => [...current, {
-      id,
-      app,
-      title: title || shortcuts.find(item => item.id === app)?.label || 'NurbekOS',
-      x: Math.max(10, 86 + (current.length % 5) * 34),
-      y: Math.max(22, 48 + (current.length % 5) * 28),
-      width: size[0],
-      height: size[1],
-      minimized: false,
-      maximized: false,
-      url,
-      project,
-      experience,
-      photo,
-      achievement,
-    }]);
+    setWindows(current => [...current, makeWindow(id, app, opts, current.length)]);
     setActive(id);
+    sfx('open');
+    const path = pathFor({app, project, experience}, projects);
+    track('open', {path: path && path !== '/' ? path : `/${app}`});
   }
 
   function focus(id: string) {
@@ -462,8 +642,17 @@ export default function Home() {
   }
 
   function close(id: string) {
+    sfx('close');
+    const remaining = windows.filter(win => win.id !== id);
     setWindows(current => current.filter(win => win.id !== id));
-    setActive(current => current === id ? '' : current);
+    setMenu(null);
+    setActive(current => current === id ? (remaining.filter(win => !win.minimized).at(-1)?.id || '') : current);
+  }
+
+  function minimize(id: string) {
+    const remaining = windows.filter(win => win.id !== id && !win.minimized);
+    patch(id, {minimized: true});
+    setActive(current => current === id ? (remaining.at(-1)?.id || '') : current);
   }
 
   function openProject(name: string) {
@@ -607,18 +796,19 @@ export default function Home() {
     if (command === 'clear' || command === 'cls') {
       setTerminalLines([]); setTerminalInput(''); return;
     }
-    if (command === 'help') output.push('Commands: whoami, projects, experience, awards, photos, games, snake, minesweeper, badges, telegram, linkedin, github, cv, date, clear');
+    if (command === 'help') output.push('Commands: whoami, now, welcome, projects, experience, awards, photos, contact, games, snake, minesweeper, badges, telegram, linkedin, github, cv, date, clear');
     else if (command === 'whoami') output.push(`${profile.name} — ${profile.headline}`);
     else if (command === 'date') output.push(new Date().toString());
-    else if (['projects','experience','awards','photos','games','snake','minesweeper','badges'].includes(command)) {
+    else if (command === 'now') output.push(...profile.now.map(item => `  • ${item}`));
+    else if (['projects','experience','awards','photos','games','snake','minesweeper','badges','contact','welcome'].includes(command)) {
       const actions: Record<string, () => void> = {
-        projects: () => launch('projects'), experience: () => launch('experience'), awards: () => launch('achievements'), photos: () => launch('gallery'), games: () => launch('games'), snake: openSnake, minesweeper: openMinesweeper, badges: () => launch('badges', 'NurbekOS Achievements'),
+        projects: () => launch('projects'), experience: () => launch('experience'), contact: () => launch('contact'), welcome: () => launch('welcome'), awards: () => launch('achievements'), photos: () => launch('gallery'), games: () => launch('games'), snake: openSnake, minesweeper: openMinesweeper, badges: () => launch('badges', 'NurbekOS Achievements'),
       };
       actions[command](); output.push(`Opening ${raw}...`);
     } else if (command === 'telegram') { launch('browser', 'Telegram - Microsoft Internet Explorer', profile.links.telegram); output.push('Opening Telegram...'); }
     else if (command === 'linkedin') { launch('browser', 'LinkedIn - Microsoft Internet Explorer', profile.links.linkedin); output.push('Opening LinkedIn...'); }
     else if (command === 'github') { launch('browser', 'GitHub - Microsoft Internet Explorer', profile.links.github); output.push('Opening GitHub...'); }
-    else if (command === 'cv') { window.open('/cv.pdf', '_blank', 'noopener,noreferrer'); output.push('Opening CV...'); }
+    else if (command === 'cv') { window.open('/cv', '_blank', 'noopener,noreferrer'); output.push('Opening CV...'); }
     else output.push(`'${raw}' is not recognized as a command. Type help.`);
     setTerminalLines(lines => [...lines, ...output, '']);
     setTerminalInput('');
@@ -663,6 +853,10 @@ export default function Home() {
       'my documents': 'documents',
       about: 'about',
       'my computer': 'about',
+      contact: 'contact',
+      message: 'contact',
+      welcome: 'welcome',
+      'start here': 'welcome',
       computer: 'about',
       recycle: 'recycle',
       'recycle bin': 'recycle',
@@ -680,7 +874,7 @@ export default function Home() {
     if (normalized === 'snake' || normalized === 'snake.exe') { openSnake(); return; }
     if (normalized === 'minesweeper' || normalized === 'minesweeper.exe' || normalized === 'mines') { openMinesweeper(); return; }
     if (normalized === 'cv' || normalized === 'resume' || normalized === 'cv.pdf') {
-      const tab = window.open('/cv.pdf', '_blank', 'noopener,noreferrer');
+      const tab = window.open('/cv', '_blank', 'noopener,noreferrer');
       if (tab) tab.opener = null;
       return;
     }
@@ -711,6 +905,8 @@ export default function Home() {
   }
 
   function windowIcon(win: WindowState) {
+    if (win.app === 'welcome') return `${I}/welcome.svg`;
+    if (win.app === 'contact') return `${I}/mail.svg`;
     if (win.app === 'browser') return `${I}/internet-explorer.svg`;
     if (win.app === 'achievements' || win.app === 'achievementDetail') return `${I}/achievements.svg`;
     if (win.app === 'experience' || win.app === 'experienceProperties') return `${I}/folder.svg`;
@@ -764,19 +960,70 @@ export default function Home() {
     if (window.matchMedia('(pointer: coarse)').matches) action();
   }
 
+  function renderMenu(name: MenuName, win: WindowState) {
+    const item = (label: string, action: () => void, extra?: {checked?: boolean; hint?: string; disabled?: boolean}) => (
+      <button type="button" role="menuitem" key={label} disabled={extra?.disabled} onClick={action}>
+        <span className="menu-check">{extra?.checked ? '✓' : ''}</span><span>{label}</span>{extra?.hint && <kbd>{extra.hint}</kbd>}
+      </button>
+    );
+    const sep = (key: string) => <div className="menu-separator" key={key}/>;
+    const path = pathFor(win, projects);
+    switch (name) {
+      case 'File': return [
+        item('Open in new tab', () => path && window.open(path, '_blank', 'noopener'), {disabled: !path}),
+        item('Copy link to this window', () => copyLink(win)),
+        sep('f1'),
+        item(win.maximized ? 'Restore' : 'Maximize', () => patch(win.id, {maximized: !win.maximized})),
+        item('Minimize', () => minimize(win.id)),
+        sep('f2'),
+        item('Close', () => close(win.id), {hint: 'Esc'}),
+      ];
+      case 'Edit': return [
+        item('Copy link', () => copyLink(win)),
+        item('Find…', () => launch('search', 'Search Results'), {hint: 'F3'}),
+      ];
+      case 'View': return [
+        item('Tiles', () => setViewMode('tiles'), {checked: viewMode === 'tiles'}),
+        item('Details', () => setViewMode('details'), {checked: viewMode === 'details'}),
+        sep('v1'),
+        item('Folders pane', () => setFoldersPane(value => !value), {checked: foldersPane}),
+      ];
+      case 'Favorites': return [
+        item('Telegram — @uzalisherov', () => { outbound(profile.links.telegram, 'Telegram'); window.open(profile.links.telegram, '_blank', 'noopener'); }),
+        item('LinkedIn', () => { outbound(profile.links.linkedin, 'LinkedIn'); window.open(profile.links.linkedin, '_blank', 'noopener'); }),
+        item('GitHub', () => { outbound(profile.links.github, 'GitHub'); window.open(profile.links.github, '_blank', 'noopener'); }),
+        sep('fa1'),
+        item('My CV (PDF)', () => window.open('/cv', '_blank', 'noopener')),
+        item('Send me a message', () => launch('contact')),
+      ];
+      case 'Tools': return [
+        item('Search', () => launch('search', 'Search Results'), {hint: '/'}),
+        item('Terminal', () => launch('terminal')),
+        item('Run…', () => launch('run')),
+        sep('t1'),
+        item('Interface sounds', toggleSound, {checked: sound}),
+      ];
+      case 'Help': return [
+        item('Start Here', () => launch('welcome')),
+        item('About nurbekOS', () => launch('about')),
+        item('NurbekOS Achievements', () => launch('badges')),
+      ];
+    }
+  }
+
   const explorerApps: AppId[] = ['projects', 'experience', 'projectFolder', 'projectDetail', 'achievements', 'achievementDetail', 'gallery', 'documents', 'games', 'badges', 'recycle', 'browser', 'search'];
 
   return (
     <main
       className="desktop"
-      onClick={() => { setStart(false); setContext(null); setSelected(''); }}
+      onClick={() => { setStart(false); setContext(null); setSelected(''); setMenu(null); }}
       onContextMenu={event => { event.preventDefault(); setContext(null); }}
     >
       <a className="skip-link" href="#desktop-icons">Skip to desktop shortcuts</a>
 
       {boot && (
         <div className="boot" role="status" aria-label="NurbekOS is starting">
-          <div className="boot-logo"><span className="boot-word">nurbek</span><span>OS</span><small>portfolio edition v4.5</small></div>
+          <div className="boot-logo"><span className="boot-word">nurbek</span><span>OS</span><small>portfolio edition v5</small></div>
           <div className="boot-progress" aria-hidden="true"><span/></div>
           <button type="button" onClick={() => setBoot(false)}>Skip startup ›</button>
         </div>
@@ -804,8 +1051,23 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>portfolio edition</small></div>
-      <div className="desktop-hint" aria-hidden="true">Double-click an icon · F3 or / to search</div>
+      <div className="desktop-brand" aria-hidden="true">nurbekOS <small>{profile.name} · portfolio edition</small></div>
+
+      <aside className="now-gadget" aria-label={`About ${profile.name}`} onClick={event => event.stopPropagation()}>
+        <div className="now-head">
+          <img src={profile.photo} alt="" width={44} height={44}/>
+          <div><b>{profile.name}</b><span>{profile.headline}</span></div>
+        </div>
+        <div className="now-title"><i className="now-dot" aria-hidden="true"/>Right now</div>
+        <ul>{profile.now.slice(0, 4).map(item => <li key={item}>{item}</li>)}</ul>
+        <div className="now-actions">
+          <button type="button" className="xp-button primary" onClick={() => launch('welcome')}>Start here</button>
+          <button type="button" className="xp-button" onClick={() => launch('contact')}>Contact</button>
+          <a className="xp-button" href="/cv" target="_blank" rel="noopener noreferrer">CV</a>
+        </div>
+      </aside>
+
+      <div className="desktop-hint" aria-hidden="true">Double-click an icon · F3 or / to search · right-click for more</div>
 
       {windows.filter(win => !win.minimized).map((win, index) => {
         const showExplorerChrome = explorerApps.includes(win.app);
@@ -813,28 +1075,36 @@ export default function Home() {
         return (
           <section
             key={win.id}
-            className={`xp-window ${active === win.id ? 'is-active' : ''} ${win.maximized ? 'maximized' : ''} app-${win.app}`}
+            className={`xp-window ${active === win.id ? 'is-active' : ''} ${win.maximized ? 'maximized' : ''} ${win.centered && !win.maximized ? 'centered' : ''} app-${win.app}`}
             style={win.maximized ? {zIndex: 10 + index} : {
-              left: win.x,
-              top: win.y,
+              left: win.centered ? undefined : win.x,
+              top: win.centered ? undefined : win.y,
               width: `min(${win.width}px, calc(100vw - 16px))`,
               height: `min(${win.height}px, calc(100dvh - 55px))`,
               zIndex: 10 + index,
             }}
             onPointerDown={() => focus(win.id)}
+            role="dialog"
             aria-label={win.title}
           >
             <div
               className="xp-titlebar"
               onPointerDown={event => {
                 if (win.maximized || (event.target as HTMLElement).closest('button')) return;
-                drag.current = {id: win.id, startX: event.clientX, startY: event.clientY, x: win.x, y: win.y};
+                let {x, y} = win;
+                if (win.centered) {
+                  // Convert a centred window to absolute coordinates before dragging.
+                  const rect = (event.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                  x = rect.left; y = rect.top;
+                  patch(win.id, {centered: false, x, y});
+                }
+                drag.current = {id: win.id, startX: event.clientX, startY: event.clientY, x, y};
               }}
               onDoubleClick={() => patch(win.id, {maximized: !win.maximized})}
             >
               <span className="title-left"><Icon src={windowIcon(win)} size={17}/>{win.title}</span>
               <span className="window-actions">
-                <button type="button" aria-label={`Minimize ${win.title}`} onClick={() => patch(win.id, {minimized: true})}><i className="min-glyph"/></button>
+                <button type="button" aria-label={`Minimize ${win.title}`} onClick={() => minimize(win.id)}><i className="min-glyph"/></button>
                 <button type="button" aria-label={`${win.maximized ? 'Restore' : 'Maximize'} ${win.title}`} onClick={() => patch(win.id, {maximized: !win.maximized})}><i className="max-glyph"/></button>
                 <button type="button" className="close" aria-label={`Close ${win.title}`} onClick={() => close(win.id)}><i className="close-glyph"/></button>
               </span>
@@ -842,8 +1112,24 @@ export default function Home() {
 
             {showExplorerChrome && (
               <>
-                <nav className="xp-menu" aria-label="Window menu">
-                  <button type="button">File</button><button type="button">Edit</button><button type="button" onClick={() => setViewMode(viewMode === 'tiles' ? 'details' : 'tiles')}>View</button><button type="button">Favorites</button><button type="button">Tools</button><button type="button">Help</button>
+                <nav className="xp-menu" aria-label="Window menu" onClick={event => event.stopPropagation()}>
+                  {(['File', 'Edit', 'View', 'Favorites', 'Tools', 'Help'] as MenuName[]).map(name => (
+                    <div className="menu-root" key={name}>
+                      <button
+                        type="button"
+                        className={menu?.win === win.id && menu.name === name ? 'open' : ''}
+                        aria-haspopup="menu"
+                        aria-expanded={menu?.win === win.id && menu.name === name}
+                        onClick={() => setMenu(current => current?.win === win.id && current.name === name ? null : {win: win.id, name})}
+                        onMouseEnter={() => setMenu(current => current && current.win === win.id ? {win: win.id, name} : current)}
+                      >{name}</button>
+                      {menu?.win === win.id && menu.name === name && (
+                        <div className="xp-dropdown" role="menu" onClick={() => setMenu(null)}>
+                          {renderMenu(name, win)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </nav>
                 <div className="xp-toolbar" role="toolbar" aria-label="Explorer toolbar">
                   <button type="button" disabled title="Back"><Icon src={`${I}/back.svg`} size={24}/> <span>Back</span></button>
@@ -858,12 +1144,91 @@ export default function Home() {
                 <div className="xp-address">
                   <label>Address</label>
                   <div className="address-field"><Icon src={windowIcon(win)} size={17}/><input aria-label="Current address" value={addressFor(win)} readOnly/></div>
-                  <span className="go" aria-hidden="true"><b>➜</b> Go</span>
+                  <button type="button" className="go" onClick={() => copyLink(win)} title="Copy a link to this window"><b>➜</b> Copy link</button>
                 </div>
               </>
             )}
 
             <div className="xp-content">
+              {win.app === 'welcome' && (
+                <div className="welcome-app">
+                  <aside className="welcome-side">
+                    <div className="welcome-photo"><img src={profile.photo} alt={profile.name}/></div>
+                    <b>{profile.name}</b>
+                    <span>{profile.location}</span>
+                    <div className="welcome-socials">
+                      <a href={profile.links.telegram} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.telegram, 'Telegram')} aria-label="Telegram"><Icon src={`${I}/telegram.svg`} size={22}/></a>
+                      <a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.linkedin, 'LinkedIn')} aria-label="LinkedIn"><Icon src={`${I}/linkedin.svg`} size={22}/></a>
+                      <a href={profile.links.github} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.github, 'GitHub')} aria-label="GitHub"><Icon src={`${I}/github.svg`} size={22}/></a>
+                    </div>
+                    <div className="welcome-side-note">{profile.education}</div>
+                  </aside>
+                  <div className="welcome-main">
+                    <div className="eyebrow">Welcome to nurbekOS</div>
+                    <h2 className="welcome-title">Hi, I’m {profile.name.split(' ')[0]}.</h2>
+                    <p className="welcome-pitch">{profile.pitch}</p>
+                    <div className="welcome-stats">
+                      {profile.stats.map((stat, i) => <div key={stat.label} style={{animationDelay: `${0.15 + i * 0.08}s`}}><strong>{stat.value}</strong><span>{stat.label}</span></div>)}
+                    </div>
+                    <div className="welcome-now">
+                      <h3><i className="now-dot" aria-hidden="true"/>Right now</h3>
+                      <ul>{profile.now.map(item => <li key={item}>{item}</li>)}</ul>
+                    </div>
+                    <div className="welcome-cta">
+                      <button type="button" className="xp-cta primary" onClick={() => launch('projects')}><Icon src={`${I}/my-projects.svg`} size={22}/>See my work</button>
+                      <button type="button" className="xp-cta" onClick={() => launch('contact')}><Icon src={`${I}/mail.svg`} size={22}/>Get in touch</button>
+                      <a className="xp-cta" href="/cv" target="_blank" rel="noopener noreferrer"><Icon src={`${I}/text-file.svg`} size={22}/>Download CV</a>
+                    </div>
+                    <div className="welcome-tour">
+                      <span>Or explore like it’s 2003:</span>
+                      <button type="button" onClick={() => launch('experience')}>Work Experience</button>
+                      <button type="button" onClick={() => launch('achievements')}>Achievements</button>
+                      <button type="button" onClick={() => launch('gallery')}>My Pictures</button>
+                      <button type="button" onClick={() => launch('games')}>Games</button>
+                    </div>
+                  </div>
+                  <footer className="welcome-footer">
+                    <label><input type="checkbox" checked={showWelcomeAtStartup} onChange={event => toggleWelcomeAtStartup(event.target.checked)}/> Show this window when nurbekOS starts</label>
+                    <button type="button" className="xp-button" onClick={() => close(win.id)}>Close</button>
+                  </footer>
+                </div>
+              )}
+
+              {win.app === 'contact' && (
+                <form className="mail-app" onSubmit={sendMessage} noValidate>
+                  <div className="mail-toolbar">
+                    <button type="submit" className="mail-tool" disabled={contactState.status === 'sending' || contactState.status === 'sent'}><Icon src={`${I}/send.svg`} size={26}/><span>{contactState.status === 'sending' ? 'Sending…' : 'Send'}</span></button>
+                    <span className="toolbar-divider"/>
+                    <a className="mail-tool" href={profile.links.telegram} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.telegram, 'Telegram')}><Icon src={`${I}/telegram.svg`} size={26}/><span>Telegram</span></a>
+                    <a className="mail-tool" href={profile.links.linkedin} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.linkedin, 'LinkedIn')}><Icon src={`${I}/linkedin.svg`} size={26}/><span>LinkedIn</span></a>
+                  </div>
+                  {contactState.status === 'sent' ? (
+                    <div className="mail-sent" role="status">
+                      <Icon src={`${I}/send.svg`} size={56}/>
+                      <h2>Message sent</h2>
+                      <p>Thanks for writing — it landed straight in my inbox. I usually reply within a couple of days.</p>
+                      <div><button type="button" className="xp-button" onClick={() => setContactState({status: 'idle'})}>Write another</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Close</button></div>
+                    </div>
+                  ) : (<>
+                    <div className="mail-fields">
+                      <span className="mail-label">To:</span>
+                      <div className="mail-to"><img src={profile.photo} alt="" width={18} height={18}/>{profile.name}</div>
+                      <label className="mail-label" htmlFor={`name-${win.id}`}>From:</label>
+                      <input id={`name-${win.id}`} value={contactForm.name} onChange={event => setContactForm(form => ({...form, name: event.target.value}))} placeholder="Your name" autoComplete="name" maxLength={80} required/>
+                      <label className="mail-label" htmlFor={`contact-${win.id}`}>Reply to:</label>
+                      <input id={`contact-${win.id}`} value={contactForm.contact} onChange={event => setContactForm(form => ({...form, contact: event.target.value}))} placeholder="Email or @telegram username" autoComplete="email" maxLength={120} required/>
+                      <label className="mail-label" htmlFor={`topic-${win.id}`}>Subject:</label>
+                      <select id={`topic-${win.id}`} value={contactForm.topic} onChange={event => setContactForm(form => ({...form, topic: event.target.value}))}>{TOPICS.map(topic => <option key={topic}>{topic}</option>)}</select>
+                    </div>
+                    <textarea aria-label="Message" className="mail-body" value={contactForm.message} onChange={event => setContactForm(form => ({...form, message: event.target.value}))} placeholder={`Hi ${profile.name.split(' ')[0]},\n\n`} maxLength={4000} required/>
+                    <input className="hp-field" tabIndex={-1} autoComplete="off" aria-hidden="true" value={contactForm.website} onChange={event => setContactForm(form => ({...form, website: event.target.value}))} name="website"/>
+                    <div className={`mail-status ${contactState.status === 'error' ? 'error' : ''}`} role={contactState.status === 'error' ? 'alert' : undefined}>
+                      {contactState.status === 'error' ? contactState.error : 'Messages go straight to me. I usually reply within a couple of days.'}
+                    </div>
+                  </>)}
+                </form>
+              )}
+
               {win.app === 'projects' && (
                 <div className={`explorer-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
                   {foldersPane && <aside className="explorer-sidebar">
@@ -872,9 +1237,27 @@ export default function Home() {
                     <div className="task-panel"><strong>Details</strong><p><b>My Projects</b><br/>{projects.length} objects<br/>{projects.filter(item => item.status === 'active').length} active</p></div>
                   </aside>}
                   <div className="explorer-main">
-                    {viewMode === 'tiles' ? (
+                    {viewMode === 'tiles' ? (<>
+                      {projects.some(project => project.featured) && <section className="featured-strip" aria-label="Featured projects">
+                        <h3 className="group-heading">Featured<span>{projects.filter(project => project.featured).length}</span></h3>
+                        <div className="featured-grid">
+                          {projects.filter(project => project.featured).map(project => (
+                            <button type="button" key={project.name} className={`featured-card tone-${project.coverTone}`} onClick={event => {event.stopPropagation(); openProject(project.name);}} onContextMenu={event => onProjectContext(event, project.name)}>
+                              <span className="featured-top">
+                                {project.logo ? <img src={project.logo} alt="" width={40} height={40}/> : <span className="featured-initial">{project.name[0]}</span>}
+                                <span className="featured-status">{statusText(project.status)}</span>
+                              </span>
+                              <b>{project.name}</b>
+                              <small>{project.role ? `${project.role} · ` : ''}{project.kind}</small>
+                              {project.metrics?.[0] && <span className="featured-metric"><strong>{project.metrics[0].value}</strong> {project.metrics[0].label}</span>}
+                              <span className="featured-open">Open project ›</span>
+                            </button>
+                          ))}
+                        </div>
+                      </section>}
+                      <h3 className="group-heading files-heading">More projects &amp; experiments<span>{projects.filter(project => !project.featured && project.status !== 'archived').length}</span></h3>
                       <div className="explorer-files">
-                        {projects.map(project => (
+                        {projects.filter(project => !project.featured && project.status !== 'archived').map(project => (
                           <button
                             type="button"
                             key={project.name}
@@ -888,8 +1271,12 @@ export default function Home() {
                             <span className="file-copy"><span className="file-name">{project.name}</span><small>{project.kind}</small><small>{statusText(project.status)}</small></span>
                           </button>
                         ))}
+                        <button type="button" className="file-item" onClick={event => {event.stopPropagation(); launch('recycle');}} title="Open the archive">
+                          <Icon src={`${I}/recycle-bin.svg`} size={43}/>
+                          <span className="file-copy"><span className="file-name">Archive</span><small>{projects.filter(project => project.status === 'archived').length} past projects</small><small>Lessons & finished work</small></span>
+                        </button>
                       </div>
-                    ) : (
+                    </>) : (
                       <div className="details-table" role="table" aria-label="Projects">
                         <div className="details-head" role="row"><span>Name</span><span>Type</span><span>Status</span><span>Timeline</span></div>
                         {projects.map(project => <button type="button" className="details-row" role="row" key={project.name} onDoubleClick={() => openProject(project.name)} onClick={() => {setSelected(project.name); activateOnTouch(() => openProject(project.name));}}>
@@ -918,7 +1305,7 @@ export default function Home() {
                           <div className="eyebrow">{project.featured ? 'Featured project' : 'Project'}</div>
                           <h2>{project.name}</h2>
                           <p>{project.description}</p>
-                          <div className="project-actions">{project.url && <button type="button" className="xp-button primary" onClick={() => visitProject(project.name)}>Visit website</button>}<button type="button" className="xp-button" onClick={() => exploreProject(project.name)}>Explore files</button><button type="button" className="xp-button" onClick={() => projectProperties(project.name)}>Properties</button></div>
+                          <div className="project-actions">{project.url && <a className="xp-button primary" href={project.url} target="_blank" rel="noopener noreferrer" onClick={() => outbound(project.url, `${project.name} website`)}>Visit website ↗</a>}{project.url && <button type="button" className="xp-button" onClick={() => visitProject(project.name)}>Preview here</button>}<button type="button" className="xp-button" onClick={() => copyLink(win)}>Copy link</button><button type="button" className="xp-button" onClick={() => projectProperties(project.name)}>Properties</button></div>
                         </div>
                       </header>
                       <div className="quick-facts">
@@ -926,7 +1313,8 @@ export default function Home() {
                         <div><small>ROLE</small><b>{project.role || 'Builder / contributor'}</b></div>
                         <div><small>TIMELINE</small><b>{project.year}</b></div>
                       </div>
-                      <section className="project-section"><h3>What it is</h3><p>{project.detail}</p></section>
+                      {project.metrics && project.metrics.length > 0 && <div className="impact-row" aria-label="Impact">{project.metrics.map(metric => <div key={metric.label}><strong>{metric.value}</strong><span>{metric.label}</span></div>)}</div>}
+                      <section className="project-section"><h3>The story</h3><p>{project.detail}</p></section>
                       <section className="project-section"><h3>Tools & focus</h3><div className="tech-chips">{project.tech.split('·').map(item => <span key={item.trim()}>{item.trim()}</span>)}</div></section>
                       {projectPhotos.length > 0 && <section className="project-section"><h3>Photos</h3><div className="inline-photo-grid">{projectPhotos.map(photo => <button type="button" key={photo.id} onClick={() => openPhoto(photo.id)}><img src={photo.src} alt={photo.alt} loading="lazy"/><span>{photo.title}</span></button>)}</div><button type="button" className="text-link-button" onClick={() => launch('gallery', `${project.name} - Pictures`, undefined, project.name)}>Open project gallery ({photos.filter(photo => photo.project === project.name).length})</button></section>}
                       <section className="project-section"><h3>Project files</h3><div className="mini-file-row"><button type="button" onClick={() => exploreProject(project.name)}><Icon src={`${I}/folder.svg`} size={28}/><span><b>Project folder</b><small>README, properties and links</small></span></button>{project.url && <button type="button" onClick={() => visitProject(project.name)}><Icon src={`${I}/internet-explorer.svg`} size={28}/><span><b>website.url</b><small>{project.url}</small></span></button>}</div></section>
@@ -1144,7 +1532,7 @@ export default function Home() {
                 <div className={`explorer-layout ${foldersPane ? '' : 'sidebar-hidden'}`}>
                   {foldersPane && <aside className="explorer-sidebar"><div className="task-panel"><strong>File and Folder Tasks</strong><button type="button" onClick={() => launch('search', 'Search Documents')}>Search this folder</button></div><div className="task-panel"><strong>Other Places</strong><button type="button" onClick={() => launch('gallery')}>My Pictures</button><button type="button" onClick={() => launch('projects')}>My Projects</button></div></aside>}
                   <div className="document-files">
-                    <a className="document-file" href="/cv.pdf" target="_blank" rel="noopener noreferrer"><Icon src={`${I}/text-file.svg`} size={42}/><span><b>Nurbek_Alisherov_CV.pdf</b><small>Adobe PDF · Curriculum vitae</small></span></a>
+                    <a className="document-file" href="/cv" target="_blank" rel="noopener noreferrer"><Icon src={`${I}/text-file.svg`} size={42}/><span><b>Nurbek_Alisherov_CV.pdf</b><small>Adobe PDF · Curriculum vitae</small></span></a>
                     <button type="button" className="document-file" onDoubleClick={() => launch('about')} onClick={() => activateOnTouch(() => launch('about'))}><Icon src={`${I}/notepad.svg`} size={42}/><span><b>ABOUT_NURBEK.txt</b><small>Text Document · Opens System Properties</small></span></button>
                   </div>
                 </div>
@@ -1198,11 +1586,11 @@ export default function Home() {
                   </div>
                   {aboutTab === 'general' && <div className="system-tab general-tab">
                     <div className="system-profile-photo"><img src={profile.photo} alt={`${profile.name} profile`} /></div>
-                    <div className="system-copy"><h2>{profile.name}</h2><p className="system-headline">{profile.headline}</p><p>{profile.bio}</p><div className="system-rule"/><dl><dt>Registered to:</dt><dd>{profile.name}</dd><dt>Location:</dt><dd>{profile.location}</dd><dt>Focus:</dt><dd>{profile.focus}</dd></dl></div>
+                    <div className="system-copy"><h2>{profile.name}</h2><p className="system-headline">{profile.headline}</p><p>{profile.bio}</p><div className="system-rule"/><dl><dt>Registered to:</dt><dd>{profile.name}</dd><dt>Location:</dt><dd>{profile.location}</dd><dt>Studying:</dt><dd>{profile.education}</dd><dt>Focus:</dt><dd>{profile.focus}</dd></dl></div>
                   </div>}
                   {aboutTab === 'computer' && <div className="system-tab"><fieldset><legend>Computer description</legend><p>NurbekOS — interactive portfolio and project archive.</p></fieldset><fieldset><legend>Full computer name</legend><dl className="system-fields"><dt>Computer name:</dt><dd>{profile.computerName}</dd><dt>Workgroup:</dt><dd>{profile.workgroup}</dd></dl></fieldset><p className="system-note">This portfolio behaves like a desktop so visitors can explore work as files, folders and applications rather than as one long page.</p></div>}
                   {aboutTab === 'portfolio' && <div className="system-tab portfolio-tab"><div className="setting-row"><span><b>Projects</b><small>{projects.length} projects and experiments</small></span><button type="button" className="xp-button" onClick={() => launch('projects')}>Open</button></div><div className="setting-row"><span><b>Experience</b><small>{experiences.length} roles and organizations</small></span><button type="button" className="xp-button" onClick={() => launch('experience')}>Open</button></div><div className="setting-row"><span><b>Achievements</b><small>{awards.length} awards and recognitions</small></span><button type="button" className="xp-button" onClick={() => launch('achievements')}>Open</button></div><div className="setting-row"><span><b>Pictures</b><small>{photos.length} images currently installed</small></span><button type="button" className="xp-button" onClick={() => launch('gallery')}>Open</button></div><div className="setting-row"><span><b>Games</b><small>Snake.exe + Minesweeper.exe installed</small></span><button type="button" className="xp-button" onClick={() => launch('games')}>Open</button></div></div>}
-                  {aboutTab === 'links' && <div className="system-tab links-tab"><p>Open Nurbek’s public profiles:</p><a href={profile.links.website} target="_blank" rel="noopener noreferrer">alisherov.com</a><a href={profile.links.github} target="_blank" rel="noopener noreferrer">GitHub / alisherovuz</a><a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn / uzalisherov</a><a href="/cv.pdf" target="_blank" rel="noopener noreferrer">Curriculum vitae (PDF)</a></div>}
+                  {aboutTab === 'links' && <div className="system-tab links-tab"><p>Open Nurbek’s public profiles:</p><a href={profile.links.website} target="_blank" rel="noopener noreferrer">alisherov.com</a><a href={profile.links.github} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.github, 'GitHub')}>GitHub / alisherovuz</a><a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.linkedin, 'LinkedIn')}>LinkedIn / uzalisherov</a><a href={profile.links.telegram} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.telegram, 'Telegram')}>Telegram / @uzalisherov</a><a href="/cv" target="_blank" rel="noopener noreferrer">Curriculum vitae (PDF)</a></div>}
                   <div className="properties-actions"><button type="button" className="xp-button" onClick={() => close(win.id)}>OK</button><button type="button" className="xp-button" onClick={() => close(win.id)}>Cancel</button><button type="button" className="xp-button" disabled>Apply</button></div>
                 </div>
               )}
@@ -1237,9 +1625,12 @@ export default function Home() {
       </div>}
 
       {start && <section className="start-menu" onClick={event => event.stopPropagation()} aria-label="Start menu">
-        <header className="start-header"><img className="start-profile-photo" src={profile.photo} alt={`${profile.name} profile`} /><span>{profile.name}</span></header>
+        <header className="start-header"><img className="start-profile-photo" src={profile.photo} alt={`${profile.name} profile`} /><span><b>{profile.name}</b><small>{profile.headline}</small></span></header>
         <div className="start-columns">
           <div>
+            <button type="button" onClick={() => launch('welcome')}><Icon src={`${I}/welcome.svg`} size={34}/><span><b>Start Here</b><small>Who I am, in 30 seconds</small></span></button>
+            <button type="button" onClick={() => launch('contact')}><Icon src={`${I}/mail.svg`} size={34}/><span><b>Contact Me</b><small>Send a message straight to me</small></span></button>
+            <div className="start-separator"/>
             <button type="button" onClick={() => launch('projects')}><Icon src={`${I}/my-projects.svg`} size={34}/><span><b>My Projects</b><small>Products, experiments & archives</small></span></button>
             <button type="button" onClick={() => launch('experience')}><Icon src={`${I}/folder.svg`} size={34}/><span><b>Work Experience</b><small>Roles, teams & organizations</small></span></button>
             <button type="button" onClick={() => launch('achievements')}><Icon src={`${I}/achievements.svg`} size={34}/><span><b>Achievements</b><small>Awards & recognitions</small></span></button>
@@ -1254,12 +1645,14 @@ export default function Home() {
             <button type="button" onClick={() => launch('terminal', 'NurbekOS Terminal')}><Icon src={`${I}/cmd.svg`} size={27}/><b>Terminal</b></button>
             <button type="button" onClick={() => launch('badges', 'NurbekOS Achievements')}><Icon src={`${I}/badge.svg`} size={27}/><b>NurbekOS Achievements</b></button>
             <div className="start-separator"/>
-            <a href={profile.links.telegram} target="_blank" rel="noopener noreferrer"><Icon src={`${I}/internet-explorer.svg`} size={27}/><b>Telegram</b></a><a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer"><Icon src={`${I}/internet-explorer.svg`} size={27}/><b>LinkedIn</b></a>
-            <a href="/cv.pdf" target="_blank" rel="noopener noreferrer"><Icon src={`${I}/text-file.svg`} size={27}/><b>CV / Resume</b></a>
+            <a href={profile.links.telegram} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.telegram, 'Telegram')}><Icon src={`${I}/telegram.svg`} size={27}/><b>Telegram</b></a><a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer" onClick={() => outbound(profile.links.linkedin, 'LinkedIn')}><Icon src={`${I}/linkedin.svg`} size={27}/><b>LinkedIn</b></a>
+            <a href="/cv" target="_blank" rel="noopener noreferrer"><Icon src={`${I}/text-file.svg`} size={27}/><b>CV / Resume</b></a>
           </div>
         </div>
-        <footer className="start-footer"><button type="button" onClick={() => {setWindows([]); setActive(''); setStart(false); setBoot(true); window.setTimeout(() => setBoot(false), 900);}}><span className="power-icon">↻</span> Restart NurbekOS</button></footer>
+        <footer className="start-footer"><button type="button" onClick={() => {setWindows([]); setActive(''); setStart(false); setBoot(true); window.setTimeout(() => {setBoot(false); play('startup'); const id = `win-${++serial}`; setWindows([makeWindow(id, 'welcome', {}, 0)]); setActive(id);}, 900);}}><span className="power-icon">↻</span> Restart NurbekOS</button></footer>
       </section>}
+
+      {toast && !badgeToast && <Toast>{toast}</Toast>}
 
       {badgeToast && <div className="badge-toast" role="status"><div className="badge-toast-icon">★</div><div><b>Achievement unlocked!</b><span>{badgeToast.name}</span></div></div>}
 
@@ -1268,7 +1661,7 @@ export default function Home() {
         <div className="task-apps" aria-label="Open windows">
           {windows.map(win => <button type="button" key={win.id} className={`${active === win.id && !win.minimized ? 'active-task' : ''}`} onClick={() => focus(win.id)} title={win.title}><Icon src={windowIcon(win)} size={17}/><span>{win.title}</span></button>)}
         </div>
-        <div className="tray"><button type="button" className="tray-icon" onClick={() => setSound(value => !value)} aria-label={sound ? 'Mute interface sounds' : 'Enable interface sounds'} title="Interface sound"><Icon src={`${I}/volume.svg`} size={16}/></button><span>{time}</span></div>
+        <div className="tray"><button type="button" className={`tray-icon ${sound ? '' : 'muted'}`} onClick={toggleSound} aria-label={sound ? 'Mute interface sounds' : 'Enable interface sounds'} aria-pressed={sound} title={sound ? 'Sounds on — click to mute' : 'Sounds off — click to enable'}><Icon src={`${I}/volume.svg`} size={16}/></button><span title={today}>{time}</span></div>
       </footer>
     </main>
   );

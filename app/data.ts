@@ -1,8 +1,11 @@
 export type ProjectStatus = 'active' | 'archived' | 'experiment';
 export type CoverTone = 'blue' | 'green' | 'orange' | 'purple' | 'red' | 'teal';
 
+export type Metric = {value: string; label: string};
+
 export type Project = {
   name: string;
+  slug?: string;
   kind: string;
   url: string;
   year: string;
@@ -14,6 +17,7 @@ export type Project = {
   featured?: boolean;
   coverTone: CoverTone;
   logo?: string;
+  metrics?: Metric[];
 };
 
 export type Experience = {
@@ -51,16 +55,54 @@ export type Photo = {
   experience?: string;
 };
 
-export const profile = {
+export type Profile = {
+  name: string;
+  handle: string;
+  location: string;
+  headline: string;
+  pitch: string;
+  focus: string;
+  education: string;
+  photo: string;
+  bio: string;
+  computerName: string;
+  workgroup: string;
+  now: string[];
+  stats: Metric[];
+  links: {website: string; github: string; telegram: string; linkedin: string};
+};
+
+export type SiteContent = {
+  profile: Profile;
+  projects: Project[];
+  experiences: Experience[];
+  awards: Award[];
+};
+
+export const profile: Profile = {
   name: 'Nurbek Alisherov',
   handle: 'uzalisherov',
-  location: 'Uzbekistan',
-  headline: 'AI builder, entrepreneur, and student',
+  location: 'Tashkent, Uzbekistan',
+  headline: 'Founder & AI builder from Uzbekistan',
+  pitch: 'I build products that open doors for young people in Uzbekistan — from scholarships to AI-powered school labs.',
   focus: 'Artificial Intelligence · Education · Startups',
+  education: 'British Management University, Tashkent — Foundation Year',
   photo: '/profile/nurbek-alisherov.jpg',
-  bio: 'I build technology and education projects, lead youth communities, and experiment with AI products. NurbekOS is a portfolio designed like the computer I wish every portfolio could be: something you can explore instead of scroll through.',
+  bio: 'I founded EduGrands, co-founded Empira, and I’m building youth founder programs with INNO Technopark. I study at British Management University in Tashkent and spend most of my time shipping AI and education products with small, fast teams. This portfolio works like a computer: open folders, poke around, play a game.',
   computerName: 'NURBEK-XP',
   workgroup: 'BUILDERS',
+  now: [
+    'Building Empira — AI virtual labs for schools',
+    'Launching youth founder programs at INNO Technopark',
+    'Running the Start 7 online marathon',
+    'Co-founding the BMU AI Club',
+  ],
+  stats: [
+    {value: '50K+', label: 'students reached by EduGrands'},
+    {value: '1st', label: 'National AI Hackathon, EdTech'},
+    {value: '350+', label: 'students mentored in AI'},
+    {value: '6', label: 'university offers'},
+  ],
   links: {
     website: 'https://alisherov.com',
     github: 'https://github.com/alisherovuz',
@@ -81,8 +123,13 @@ export const projects: Project[] = [
     coverTone: 'blue',
     logo: '/media/projects/edugrands/logo.webp',
     description: 'A scholarship-discovery platform helping students in Uzbekistan find verified international opportunities.',
-    detail: 'The project grew into a web platform, Telegram community and EduCast interview series. Recent public updates place the ecosystem at 50,000+ users.',
-    tech: 'Product · Community · Partnerships · Web',
+    detail: 'It started as a Telegram channel sharing scholarships in Uzbek. It grew into a web platform, a community and the EduCast interview series, and now reaches 50,000+ students. An AI agent I built turns opportunity pages into ready-to-post announcements for the team.',
+    tech: 'Product · Community · Partnerships · AI agents',
+    metrics: [
+      {value: '50K+', label: 'students reached'},
+      {value: '$10K+', label: 'revenue from partnerships'},
+      {value: '2023', label: 'founded'},
+    ],
   },
   {
     name: 'Empira',
@@ -95,20 +142,13 @@ export const projects: Project[] = [
     coverTone: 'purple',
     logo: '/media/projects/empira/logo.webp',
     description: 'An AI virtual laboratory that turns textbook pages into interactive 3D experiments with an Uzbek AI tutor.',
-    detail: 'Built from scratch in 72 hours with JaydariTech and won 1st place in the EdTech track at the National AI Hackathon.',
+    detail: 'My team at JaydariTech built the first version from scratch in 72 hours and won 1st place in the EdTech track of the National AI Hackathon. Since then we’ve earned a Startup Garage place and school rollout partnerships.',
     tech: 'AI · EdTech · 3D · Product',
-  },
-  {
-    name: 'Atlon.uz',
-    kind: 'Youth platform',
-    url: 'https://atlon.uz',
-    year: 'Jul 2026 — present',
-    status: 'active',
-    featured: true,
-    coverTone: 'green',
-    description: 'A youth platform centered on leadership, volunteering and real-world project experience.',
-    detail: 'LinkedIn lists 500+ participants, 50+ volunteers, 12 cities and 20+ events across its programs.',
-    tech: 'Youth · Leadership · Community · Events',
+    metrics: [
+      {value: '72h', label: 'from zero to working product'},
+      {value: '1st', label: 'National AI Hackathon, EdTech'},
+      {value: 'Startup Garage', label: 'resident team'},
+    ],
   },
   {
     name: 'MentorGo',
@@ -121,8 +161,40 @@ export const projects: Project[] = [
     coverTone: 'teal',
     logo: '/media/projects/mentorgo/logo.webp',
     description: 'A platform connecting ambitious students with mentors who have won major international scholarships.',
-    detail: 'Built with a four-person team; the platform reached 3,000+ users and facilitated hundreds of mentoring sessions.',
+    detail: 'I built the platform with a four-person team. It reached 3,000+ users and hosted 200+ mentoring sessions a month, and our students went on to win more than $1M in scholarships.',
     tech: 'Web · Mentorship · Product · AI',
+    metrics: [
+      {value: '3,000+', label: 'users'},
+      {value: '200+', label: 'sessions per month'},
+      {value: '$1M+', label: 'scholarships won by students'},
+    ],
+  },
+  {
+    name: 'Atlon.uz',
+    kind: 'Youth platform',
+    url: 'https://atlon.uz',
+    year: 'Jul 2026 — present',
+    status: 'active',
+    coverTone: 'green',
+    description: 'A youth platform centered on leadership, volunteering and real-world project experience.',
+    detail: 'Atlon runs programs where young people lead real projects. So far: 500+ participants, 50+ volunteers, 20+ events across 12 cities.',
+    tech: 'Youth · Leadership · Community · Events',
+    metrics: [
+      {value: '500+', label: 'participants'},
+      {value: '12', label: 'cities'},
+      {value: '20+', label: 'events'},
+    ],
+  },
+  {
+    name: 'StartUpper',
+    kind: 'Startup community & Telegram bot',
+    url: '',
+    year: '2026 — present',
+    status: 'active',
+    coverTone: 'red',
+    description: 'A community and Telegram bot for young founders to find teammates, programs and startup opportunities.',
+    detail: 'StartUpper started as a platform concept for structured startup collaboration. Today it runs as a Telegram bot and community, and my team uses it to run the Start 7 online marathon for aspiring founders.',
+    tech: 'Startups · Telegram bot · Community',
   },
   {
     name: 'Lumora',
@@ -134,8 +206,13 @@ export const projects: Project[] = [
     coverTone: 'orange',
     logo: '/media/projects/lumora/logo.webp',
     description: 'A national competition format where student teams solve real IT cases and defend working solutions.',
-    detail: 'Organized 15 competitions across 10 regions, engaging 1,000+ students and partnering with industry organizations.',
+    detail: 'We organized 15 competitions across 10 regions, engaging 1,000+ students and partnering with 15 industry organizations.',
     tech: 'Community · Events · Partnerships · Media',
+    metrics: [
+      {value: '15', label: 'competitions'},
+      {value: '10', label: 'regions'},
+      {value: '1,000+', label: 'students'},
+    ],
   },
   {
     name: 'Friendship Checker Bot',
@@ -145,7 +222,7 @@ export const projects: Project[] = [
     status: 'experiment',
     coverTone: 'red',
     description: 'A playful Telegram bot for personalized friendship quizzes, anonymous messages and compatibility checks.',
-    detail: 'Designed as a viral-friendly social experiment with quiz sharing and leaderboards.',
+    detail: 'A viral-friendly social experiment with quiz sharing and leaderboards.',
     tech: 'Telegram bot · Viral loops · Product experiment',
   },
   {
@@ -156,7 +233,7 @@ export const projects: Project[] = [
     status: 'experiment',
     coverTone: 'purple',
     description: 'A museum of quotes that lets visitors browse curated inspiration based on their mood.',
-    detail: 'Built as a polished interactive experience with animation, navigation and an admin toolkit.',
+    detail: 'A polished interactive experience with animation, navigation and an admin toolkit.',
     tech: 'Web · UI/UX · Content · Experiment',
   },
   {
@@ -168,18 +245,18 @@ export const projects: Project[] = [
     role: 'AI Researcher & Engineer',
     coverTone: 'blue',
     description: 'An AI-powered attendance system developed at New Uzbekistan University.',
-    detail: 'The prototype reduced educators’ manual record-keeping by about four hours per month during the pilot.',
+    detail: 'The prototype cut educators’ manual record-keeping by about four hours a month during the pilot.',
     tech: 'Computer vision · AI · Prototype',
   },
   {
-    name: 'HospitalBookingCoom',
+    name: 'HospitalBooking',
     kind: 'Health-tech platform',
     url: '',
     year: 'Feb 2024 — Jul 2024',
     status: 'archived',
     coverTone: 'teal',
     description: 'A hospital service booking project for consultations and operations.',
-    detail: 'Built with a 14-person team of programmers, designers and researchers; the project was later stopped because of financial constraints.',
+    detail: 'Built with a 14-person team of programmers, designers and researchers. We stopped the project because of financial constraints, and I learned a lot about running a team that size.',
     tech: 'Web · Health-tech · Team project',
   },
   {
@@ -194,17 +271,6 @@ export const projects: Project[] = [
     tech: 'Web · Creators · Community',
   },
   {
-    name: 'StartUpper',
-    kind: 'Startup platform concept',
-    url: '',
-    year: 'Early project',
-    status: 'experiment',
-    coverTone: 'red',
-    description: 'A platform concept for early-stage founders to collaborate and access startup opportunities.',
-    detail: 'Focused on structured collaboration, startup team formation and opportunity discovery.',
-    tech: 'Startups · Collaboration · Product concept',
-  },
-  {
     name: 'WebLaunch',
     kind: 'Business competition project',
     url: '',
@@ -212,24 +278,12 @@ export const projects: Project[] = [
     status: 'archived',
     coverTone: 'green',
     description: 'A business project created for Target International School’s national business championship.',
-    detail: 'Won 1st place among five school branches; Nurbek led strategy, development and presentation.',
+    detail: 'Won 1st place among five school branches. I led strategy, development and the final presentation.',
     tech: 'Business · Product · Pitching',
   },
 ];
 
 export const experiences: Experience[] = [
-  {
-    id: 'edugrands',
-    organization: 'EduGrands',
-    role: 'Founder & CEO',
-    period: 'Aug 2023 — present',
-    location: 'Uzbekistan',
-    website: 'https://edugrants.uz',
-    logo: '/media/projects/edugrands/logo.webp',
-    description: 'Founded and scaled a scholarship-discovery platform and community connecting young people with verified international opportunities.',
-    highlights: ['50,000+ users across the ecosystem', '$10,000+ revenue from advertising and partnerships', 'EduCast interview series and nationwide scholarship marathons'],
-    relatedProject: 'EduGrands',
-  },
   {
     id: 'empira',
     organization: 'Empira (JaydariTech)',
@@ -243,6 +297,37 @@ export const experiences: Experience[] = [
     relatedProject: 'Empira',
   },
   {
+    id: 'inno-technopark',
+    organization: 'INNO Technopark',
+    role: 'Youth Founder Programs',
+    period: 'Nov 2026 — present',
+    location: 'Tashkent, Uzbekistan',
+    description: 'Working with the INNO Technopark leadership to bring young founders into the technopark through hackathons and incubation programs.',
+    highlights: ['Designing a hackathon → program → office pathway for top student teams', 'Building a residency for ambitious school, college and university founders'],
+  },
+  {
+    id: 'bmu-ai-club',
+    organization: 'BMU AI Club',
+    role: 'Co-Founder',
+    period: 'Nov 2026 — present',
+    location: 'British Management University, Tashkent',
+    website: 'https://t.me/bmuaiclub',
+    description: 'Co-founded the university’s AI club: weekly meetups that teach AI basics and get students building.',
+    highlights: ['Launched in November 2026', 'Weekly hands-on meetups for students'],
+  },
+  {
+    id: 'edugrands',
+    organization: 'EduGrands',
+    role: 'Founder & CEO',
+    period: 'Aug 2023 — present',
+    location: 'Uzbekistan',
+    website: 'https://edugrants.uz',
+    logo: '/media/projects/edugrands/logo.webp',
+    description: 'Founded and scaled a scholarship-discovery platform and community connecting young people with verified international opportunities.',
+    highlights: ['50,000+ students reached across the ecosystem', '$10,000+ revenue from advertising and partnerships', 'EduCast interview series and nationwide scholarship marathons'],
+    relatedProject: 'EduGrands',
+  },
+  {
     id: 'startup-ambassadors',
     organization: 'Startup Ambassadors',
     role: 'Project Manager',
@@ -251,7 +336,7 @@ export const experiences: Experience[] = [
     website: 'https://www.startupambassadors.uz',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Startup_Ambassadors_2.png',
     description: 'Managed a nationwide youth startup network backed by the Youth Affairs Agency and Yoshlar Ventures.',
-    highlights: ['Joined as assistant manager and later became Project Manager', 'Public LinkedIn update reports 500+ events and 10,000+ young people engaged', 'Received a Best Employee award during the placement'],
+    highlights: ['Joined as assistant manager and became Project Manager', '500+ events and 10,000+ young people engaged across the network', 'Received a Best Employee award'],
   },
   {
     id: 'digital-generation',
@@ -262,7 +347,7 @@ export const experiences: Experience[] = [
     website: 'https://digitalgeneration.uz',
     logo: 'https://digitalgeneration.uz/static/img/logo.png',
     description: 'Mentor and educator in national AI and no-code camps.',
-    highlights: ['Mentored 350+ students across 4 national camps', 'Designed inclusive curriculum for underrepresented and disabled youth', 'Taught AI and no-code tools'],
+    highlights: ['Mentored 350+ students across 4 national camps', 'Designed an inclusive curriculum for underrepresented and disabled youth', 'Taught AI and no-code tools'],
   },
   {
     id: 'lumora',
@@ -285,7 +370,7 @@ export const experiences: Experience[] = [
     website: 'https://mentorgo.uz',
     logo: '/media/projects/mentorgo/logo.webp',
     description: 'Built the mentoring platform with a four-person team.',
-    highlights: ['3,000+ users', '200+ monthly mentoring sessions during the period', 'Students collectively secured $1M+ in scholarships'],
+    highlights: ['3,000+ users', '200+ monthly mentoring sessions', 'Students collectively secured $1M+ in scholarships'],
     relatedProject: 'MentorGo',
   },
   {
@@ -296,8 +381,8 @@ export const experiences: Experience[] = [
     location: 'Tashkent, Uzbekistan',
     website: 'https://newuu.uz',
     logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Logo_New_Uzbekistan_University.jpg/960px-Logo_New_Uzbekistan_University.jpg',
-    description: 'Worked on applied AI research and engineering, including the DavomatAI attendance prototype.',
-    highlights: ['Developed DavomatAI', 'Reduced manual attendance record-keeping by about 4 hours per month in the pilot'],
+    description: 'Applied AI research and engineering, including the DavomatAI attendance prototype.',
+    highlights: ['Developed DavomatAI', 'Cut manual attendance record-keeping by about 4 hours a month in the pilot'],
     relatedProject: 'DavomatAI',
   },
   {
@@ -306,16 +391,16 @@ export const experiences: Experience[] = [
     role: 'Co-Manager',
     period: 'Ongoing',
     location: 'Namangan, Uzbekistan',
-    description: 'Co-manage a two-hectare apple orchard and sell harvest at the local bazaar.',
+    description: 'I co-manage a two-hectare apple orchard and sell the harvest at the local bazaar.',
     highlights: ['Hands-on agriculture', 'Small-business operations', 'Local sales and harvest management'],
   },
 ];
 
 export const awards: Award[] = [
   {year: '2026', name: 'National AI Hackathon — 1st Place, EdTech', issuer: 'National AI Hackathon', description: 'Led JaydariTech to first place with Empira after a 72-hour build.'},
-  {year: '2026', name: '100M UZS Grant', issuer: 'Specialized Schools Agency', description: 'Project team secured a 100,000,000 UZS grant for an educational initiative.'},
+  {year: '2026', name: '100M UZS Grant', issuer: 'Specialized Schools Agency', description: 'Our team secured a 100,000,000 UZS grant for an educational initiative.'},
   {year: '2026', name: 'Mirzo Ulug‘bek Vorislari — Republic Winner', issuer: 'National competition', description: 'Placed in the top 35 out of 48,000+ applicants across Uzbekistan.'},
-  {year: '2025', name: 'TOP3 Project in Startup Day', issuer: 'IT Park Uzbekistan', description: 'MentorGo placed first among 25 projects in the referenced Startup Day competition.'},
+  {year: '2025', name: 'TOP3 Project in Startup Day', issuer: 'IT Park Uzbekistan', description: 'MentorGo placed first among 25 projects at IT Park’s Startup Day.'},
   {year: '2025', name: 'LaunchX — 99% Scholarship', issuer: 'LaunchX', description: 'Received a 99% scholarship for the entrepreneurship programme.'},
   {year: '2024', name: '1st Place — Business Championship', issuer: 'Target International School', description: 'Won with WebLaunch among five school branches.'},
   {year: '2024', name: 'Full Tuition Scholarship', issuer: 'Target International School', description: 'Awarded a full annual school scholarship.'},
@@ -323,6 +408,8 @@ export const awards: Award[] = [
   {year: '2023', name: 'Kelajak Yoshlari', issuer: 'Najot Ta’lim & Cambridge Learning Centre', description: 'Won full scholarships through the national selection programme.'},
   {year: '2021', name: 'Khiso Olympiad — Regional 1st Place', description: 'Placed first in the regional stage.'},
 ];
+
+export const defaultContent: SiteContent = {profile, projects, experiences, awards};
 
 export const photos: Photo[] = [
   {

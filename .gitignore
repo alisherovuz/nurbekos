@@ -7,3 +7,6 @@ node_modules/
 npm-debug.log*
 
 *.tsbuildinfo
+
+# Local data folder (analytics, messages, edited content)
+.data/

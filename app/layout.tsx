@@ -1,18 +1,17 @@
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 
+const SITE_URL = process.env.SITE_URL || 'https://alisherov.com';
+
 export const metadata: Metadata = {
-  title: 'NurbekOS — Nurbek Alisherov',
-  description: 'An interactive Windows XP-inspired portfolio for Nurbek Alisherov: projects, experience, achievements, photos and more.',
-  applicationName: 'NurbekOS',
-  authors: [{name: 'Nurbek Alisherov'}],
+  metadataBase: new URL(SITE_URL),
+  title: {default: 'Nurbek Alisherov — Founder & AI builder · nurbekOS', template: '%s'},
+  description: 'Nurbek Alisherov builds AI and education products for young people in Uzbekistan. Explore his projects, experience and achievements in nurbekOS, a Windows XP-inspired portfolio.',
+  applicationName: 'nurbekOS',
+  authors: [{name: 'Nurbek Alisherov', url: SITE_URL}],
   creator: 'Nurbek Alisherov',
+  keywords: ['Nurbek Alisherov', 'EduGrands', 'Empira', 'Uzbekistan', 'AI', 'EdTech', 'founder', 'portfolio'],
   robots: {index: true, follow: true},
-  openGraph: {
-    title: 'NurbekOS v4 — Nurbek Alisherov',
-    description: 'Explore Nurbek Alisherov’s work as a Windows XP-inspired desktop.',
-    type: 'website',
-  },
 };
 
 export const viewport: Viewport = {
