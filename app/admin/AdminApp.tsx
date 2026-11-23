@@ -424,6 +424,11 @@ function flag(cc?: string) {
   return String.fromCodePoint(...[...cc].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
 }
 
+// Visits before this time were recorded without any location.
+const GEO_SINCE = Date.parse('2026-11-23T12:23:10Z');
+
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
 function duration(ms: number) {
   const s = Math.round(ms / 1000);
   if (s < 60) return `${s}s`;
@@ -433,7 +438,7 @@ function duration(ms: number) {
 }
 
 const when = (t: number) => new Date(t).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent'});
-const place = (v: VisitorSummary) => [v.city, v.region && v.region !== v.city ? v.region : undefined, v.countryName || v.country].filter(Boolean).join(', ') || 'Unknown location';
+const place = (v: VisitorSummary) => [v.city, v.region && v.region !== v.city ? v.region : undefined, v.countryName || v.country].filter(Boolean).join(', ') || (v.first < GEO_SINCE ? 'Location not recorded (before 23 Nov update)' : 'Unknown location');
 const deviceLine = (v: VisitorSummary) => [v.model || v.device[0].toUpperCase() + v.device.slice(1), `${v.os}${v.osv ? ` ${v.osv}` : ''}`].join(' · ');
 const browserLine = (v: VisitorSummary) => `${v.browser}${v.bv ? ` ${v.bv.split('.')[0]}` : ''}${v.app ? ` (inside ${v.app})` : ''}`;
 
@@ -493,10 +498,10 @@ function Visitors() {
               {list.map(v => (
                 <li key={v.v}>
                   <button type="button" className={`inbox-row vis-row ${selected === v.v ? 'sel' : ''}`} onClick={() => select(v.v)}>
-                    <span className="inbox-from">{flag(v.country)} {v.city || v.countryName || 'Unknown location'}{Date.now() - v.last < 5 * 60e3 ? <i className="vis-dot" title="Online now"/> : null}</span>
+                    <span className="inbox-from">{flag(v.country)} {v.city || v.countryName || (v.first < GEO_SINCE ? 'Location not recorded' : 'Unknown location')}{Date.now() - v.last < 5 * 60e3 ? <i className="vis-dot" title="Online now"/> : null}</span>
                     <span className="inbox-date">{timeAgo(v.last)}</span>
                     <span className="inbox-topic">{deviceLine(v)} · {browserLine(v)}</span>
-                    <span className="inbox-snippet">{v.visits > 1 ? `${v.visits} visits` : '1 visit'} · {v.views} pages · {v.opens} windows · {duration(v.activeMs)}{v.ref ? ` · from ${v.ref}` : ''}{v.cv ? ' · CV ✓' : ''}{v.messages ? ' · wrote ✉' : ''}</span>
+                    <span className="inbox-snippet">{plural(v.visits, 'visit')} · {plural(v.views, 'page')} · {plural(v.opens, 'window')} · {duration(v.activeMs)}{v.ref ? ` · from ${v.ref}` : ''}{v.cv ? ' · CV ✓' : ''}{v.messages ? ' · wrote ✉' : ''}</span>
                   </button>
                 </li>
               ))}
@@ -540,8 +545,8 @@ function VisitorDetail({id, onClose}: {id: string; onClose: () => void}) {
       </header>
       <div className="vis-kpis">
         <div><b>{v.visits}</b><span>{v.visits === 1 ? 'visit' : 'visits'}</span></div>
-        <div><b>{v.views}</b><span>pages</span></div>
-        <div><b>{v.opens}</b><span>windows</span></div>
+        <div><b>{v.views}</b><span>{v.views === 1 ? 'page' : 'pages'}</span></div>
+        <div><b>{v.opens}</b><span>{v.opens === 1 ? 'window' : 'windows'}</span></div>
         <div><b>{duration(v.activeMs)}</b><span>time on site</span></div>
       </div>
       <dl className="vis-dl">

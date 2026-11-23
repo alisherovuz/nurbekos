@@ -182,8 +182,10 @@ a.xp-button{text-decoration:none;display:inline-flex;align-items:center}
 .link-btn:hover{text-decoration:underline}
 .vis-search{margin-left:auto;min-width:220px;padding:4px 7px;border:1px solid #7f9db9;border-radius:2px;font:inherit}
 .visitors .live-pill{margin-right:0}
-.inbox.vis{min-height:560px;max-height:calc(100vh - 200px)}
-.vis .inbox-list ul{flex:1}
+.inbox.vis{height:calc(100vh - 210px);min-height:420px;grid-template-rows:minmax(0,1fr)}
+.vis .inbox-list{min-height:0}
+.vis .inbox-list ul{flex:1;min-height:0;overflow-y:auto}
+.vis .inbox-read{min-height:0;overflow-y:auto}
 .vis-dot{display:inline-block;width:7px;height:7px;margin-left:6px;border-radius:50%;background:#3fb54a;vertical-align:middle}
 .vis-detail{padding:16px 20px}
 .vis-detail header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
@@ -200,4 +202,4 @@ a.xp-button{text-decoration:none;display:inline-flex;align-items:center}
 .vis-session-head{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;background:#f3f7fd;border-bottom:1px solid #e1e8f2;font-size:12px}
 .vis-session-head span{color:#5d6d82}
 .vis-session .feed{max-height:none;padding:0 8px}
-@media (max-width:760px){.inbox.vis{grid-template-columns:1fr;max-height:none}.vis-kpis{grid-template-columns:repeat(2,1fr)}.vis-search{margin-left:0;min-width:0;width:100%}}
+@media (max-width:760px){.inbox.vis{grid-template-columns:1fr;grid-template-rows:auto;height:auto}.vis .inbox-list ul{max-height:60vh}.vis-kpis{grid-template-columns:repeat(2,1fr)}.vis-search{margin-left:0;min-width:0;width:100%}}

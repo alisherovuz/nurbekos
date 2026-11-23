@@ -264,7 +264,19 @@ async function readDays(days: number) {
   return (await Promise.all(keys.map(d => readLines<EventRecord>(`events/${d}.jsonl`)))).flat();
 }
 
-function splitSessions(events: EventRecord[]): VisitorSession[] {
+/** Old rows: one download could be logged several times within seconds. */
+function dedupeCv(events: EventRecord[]) {
+  let lastCv = 0;
+  return events.filter(e => {
+    if (e.type !== 'cv') return true;
+    const keep = e.t - lastCv > 30_000;
+    lastCv = e.t;
+    return keep;
+  });
+}
+
+function splitSessions(raw: EventRecord[]): VisitorSession[] {
+  const events = dedupeCv(raw);
   const sessions: VisitorSession[] = [];
   const byId = new Map<string, VisitorSession>();
   let latest: VisitorSession | undefined;
@@ -289,7 +301,8 @@ function splitSessions(events: EventRecord[]): VisitorSession[] {
   return sessions;
 }
 
-function summarize(v: string, events: EventRecord[]): VisitorSummary {
+function summarize(v: string, raw: EventRecord[]): VisitorSummary {
+  const events = dedupeCv(raw);
   const sessions = splitSessions(events);
   const latest = [...events].reverse();
   const pick = <K extends keyof EventRecord>(k: K) => latest.find(e => e[k] !== undefined && e[k] !== '')?.[k];
