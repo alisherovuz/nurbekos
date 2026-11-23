@@ -1,11 +1,11 @@
 'use client';
 
 import {type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState} from 'react';
-import type {Stats} from '@/lib/analytics';
+import type {Stats, VisitorSession, VisitorSummary} from '@/lib/analytics';
 import type {Message} from '@/lib/messages';
 import type {Metric, SiteContent} from '../data';
 
-type Section = 'dashboard' | 'messages' | 'content' | 'setup';
+type Section = 'dashboard' | 'visitors' | 'messages' | 'content' | 'setup';
 type Owner = {name: string; photo: string};
 type StatsResponse = Stats & {unread: number};
 
@@ -80,7 +80,8 @@ function ControlPanel({owner, telegramConnected, onSignOut}: {owner: Owner; tele
 
   useEffect(() => {
     const fromHash = window.location.hash.replace('#', '') as Section;
-    if (['dashboard', 'messages', 'content', 'setup'].includes(fromHash)) setSection(fromHash);
+    const base = fromHash.split('/')[0] as Section;
+    if (['dashboard', 'visitors', 'messages', 'content', 'setup'].includes(base)) setSection(base);
   }, []);
 
   function go(next: Section) {
@@ -95,11 +96,12 @@ function ControlPanel({owner, telegramConnected, onSignOut}: {owner: Owner; tele
 
   const nav: {id: Section; label: string; icon: string; badge?: number}[] = [
     {id: 'dashboard', label: 'Dashboard', icon: `${I}/views.svg`},
+    {id: 'visitors', label: 'Visitors', icon: `${I}/User.svg`},
     {id: 'messages', label: 'Messages', icon: `${I}/mail.svg`, badge: unread},
     {id: 'content', label: 'Edit site content', icon: `${I}/notepad.svg`},
     {id: 'setup', label: 'Setup & help', icon: `${I}/properties.svg`},
   ];
-  const titles: Record<Section, string> = {dashboard: 'Dashboard', messages: 'Messages', content: 'Site content', setup: 'Setup & help'};
+  const titles: Record<Section, string> = {dashboard: 'Dashboard', visitors: 'Visitors', messages: 'Messages', content: 'Site content', setup: 'Setup & help'};
 
   return (
     <div className="cp">
@@ -124,11 +126,12 @@ function ControlPanel({owner, telegramConnected, onSignOut}: {owner: Owner; tele
             <a className="cp-link" href="/sitemap.xml" target="_blank" rel="noopener noreferrer">Sitemap</a>
             <a className="cp-link" href="/og" target="_blank" rel="noopener noreferrer">Share preview image</a>
           </div>
-          <div className="task-panel"><strong>Details</strong><p>Stats are privacy-friendly: no cookies, no IP addresses stored, and your own visits aren’t counted while you’re signed in.</p></div>
+          <div className="task-panel"><strong>Details</strong><p>Each browser gets a random visitor ID, so returning people are counted once. IP addresses aren’t stored, only the city they point to. Your own visits aren’t counted while you’re signed in.</p></div>
         </aside>
         <main className="cp-main">
           <h1 className="cp-h1">{titles[section]}</h1>
-          {section === 'dashboard' && <Dashboard onUnread={setUnread} onOpenMessages={() => go('messages')}/>}
+          {section === 'dashboard' && <Dashboard onUnread={setUnread} onOpenMessages={() => go('messages')} onOpenVisitor={v => { window.history.replaceState(null, '', `#visitors/${v}`); setSection('visitors'); }}/>}
+          {section === 'visitors' && <Visitors/>}
           {section === 'messages' && <Messages onUnread={setUnread}/>}
           {section === 'content' && <ContentEditor/>}
           {section === 'setup' && <Setup telegramConnected={telegramConnected}/>}
@@ -166,7 +169,7 @@ function pageLabel(path: string) {
 
 const LANGS: Record<string, string> = {en: 'English', ru: 'Russian', uz: 'Uzbek', tr: 'Turkish', kk: 'Kazakh', de: 'German', ko: 'Korean', zh: 'Chinese', ar: 'Arabic', fr: 'French', es: 'Spanish', tg: 'Tajik', ky: 'Kyrgyz'};
 
-function Dashboard({onUnread, onOpenMessages}: {onUnread: (n: number) => void; onOpenMessages: () => void}) {
+function Dashboard({onUnread, onOpenMessages, onOpenVisitor}: {onUnread: (n: number) => void; onOpenMessages: () => void; onOpenVisitor: (v: string) => void}) {
   const [days, setDays] = useState(30);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [error, setError] = useState('');
@@ -237,12 +240,11 @@ function Dashboard({onUnread, onOpenMessages}: {onUnread: (n: number) => void; o
         <Panel title="Devices"><BarList rows={stats.devices.map(r => ({label: r.key[0].toUpperCase() + r.key.slice(1), count: r.count}))} empty="—"/></Panel>
         <Panel title="Browsers & systems"><BarList rows={[...stats.browsers, ...stats.systems].map(r => ({label: r.key, count: r.count}))} empty="—"/></Panel>
         <Panel title="Visitor languages"><BarList rows={stats.languages.map(r => ({label: LANGS[r.key] || r.key.toUpperCase(), count: r.count}))} empty="—"/></Panel>
-        {stats.countries.length > 0
-          ? <Panel title="Countries"><BarList rows={stats.countries.map(r => ({label: r.key, count: r.count}))} empty="—"/></Panel>
-          : <Panel title="Busiest hours (Tashkent time)"><Hours hours={stats.hours}/></Panel>}
+        <Panel title="Countries"><BarList rows={stats.countries.map(r => ({label: r.key, count: r.count}))} empty="No locations yet. New visits will show here."/></Panel>
+        <Panel title="Cities"><BarList rows={stats.cities.map(r => ({label: r.key, count: r.count}))} empty="No cities yet. New visits will show here."/></Panel>
       </div>
 
-      {stats.countries.length > 0 && <Panel title="Busiest hours (Tashkent time)"><Hours hours={stats.hours}/></Panel>}
+      <Panel title="Busiest hours (Tashkent time)"><Hours hours={stats.hours}/></Panel>
 
       <Panel title="Live activity">
         {stats.recent.length === 0 ? <p className="muted">Nothing yet.</p> : (
@@ -251,7 +253,7 @@ function Dashboard({onUnread, onOpenMessages}: {onUnread: (n: number) => void; o
               <li key={`${e.t}-${i}`}>
                 <span className={`feed-type t-${e.type}`}>{e.type === 'view' ? 'Visit' : e.type === 'open' ? 'Opened' : e.type === 'cv' ? 'CV' : e.type === 'contact' ? 'Message' : e.type === 'click' ? 'Click' : e.type}</span>
                 <span className="feed-what">{e.type === 'click' ? e.target : e.type === 'contact' ? `New message · ${e.target || ''}` : pageLabel(e.path || '/')}{e.ref ? <em> from {e.ref}</em> : null}</span>
-                <span className="feed-meta">{e.device}{e.country ? ` · ${e.country}` : ''} · {timeAgo(e.t)}</span>
+                <span className="feed-meta"><button type="button" className="link-btn" onClick={() => onOpenVisitor(e.v)}>{flag(e.country)} {e.city || e.device}</button> · {timeAgo(e.t)}</span>
               </li>
             ))}
           </ul>
@@ -412,6 +414,166 @@ function Messages({onUnread}: {onUnread: (n: number) => void}) {
         )}
       </div>
     </div>
+  );
+}
+
+/* ───────────────────────── Visitors ───────────────────────── */
+
+function flag(cc?: string) {
+  if (!cc || !/^[A-Z]{2}$/.test(cc)) return '🌐';
+  return String.fromCodePoint(...[...cc].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
+function duration(ms: number) {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+const when = (t: number) => new Date(t).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent'});
+const place = (v: VisitorSummary) => [v.city, v.region && v.region !== v.city ? v.region : undefined, v.countryName || v.country].filter(Boolean).join(', ') || 'Unknown location';
+const deviceLine = (v: VisitorSummary) => [v.model || v.device[0].toUpperCase() + v.device.slice(1), `${v.os}${v.osv ? ` ${v.osv}` : ''}`].join(' · ');
+const browserLine = (v: VisitorSummary) => `${v.browser}${v.bv ? ` ${v.bv.split('.')[0]}` : ''}${v.app ? ` (inside ${v.app})` : ''}`;
+
+type VisitorList = {visitors: VisitorSummary[]; total: number; returning: number};
+
+function Visitors() {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState<VisitorList | null>(null);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<string | null>(() => (typeof window !== 'undefined' ? window.location.hash.split('/')[1] || null : null));
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/admin/visitors?days=${days}`, {cache: 'no-store'});
+      if (!res.ok) throw new Error(res.status === 401 ? 'Your session expired. Reload and sign in again.' : 'Could not load visitors.');
+      setData((await res.json()) as VisitorList);
+      setError('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load visitors.');
+    }
+  }, [days]);
+
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(load, 30000);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
+  function select(v: string | null) {
+    setSelected(v);
+    window.history.replaceState(null, '', v ? `#visitors/${v}` : '#visitors');
+  }
+
+  if (error) return <div className="cp-empty error">{error}</div>;
+  if (!data) return <div className="cp-empty">Loading visitors…</div>;
+
+  const q = query.trim().toLowerCase();
+  const list = q ? data.visitors.filter(v => [place(v), deviceLine(v), browserLine(v), v.ref, v.isp].join(' ').toLowerCase().includes(q)) : data.visitors;
+  const online = data.visitors.filter(v => Date.now() - v.last < 5 * 60e3).length;
+
+  return (
+    <div className="visitors">
+      <div className="dash-toolbar">
+        <span className="live-pill"><i/>{online} online now</span>
+        <span className="muted">{fmt(data.total)} people · {fmt(data.returning)} came back</span>
+        <div className="seg" role="group" aria-label="Date range">
+          {[1, 7, 30, 90].map(d => <button type="button" key={d} className={days === d ? 'on' : ''} onClick={() => setDays(d)}>{d === 1 ? 'Today' : `${d} days`}</button>)}
+        </div>
+        <input className="xp-input vis-search" type="search" placeholder="Search city, device, source…" value={query} onChange={e => setQuery(e.target.value)}/>
+      </div>
+
+      <div className="inbox vis">
+        <div className="inbox-list">
+          {list.length === 0 ? <div className="cp-empty">{data.total ? 'Nobody matches that search.' : 'No visitors in this period yet.'}</div> : (
+            <ul>
+              {list.map(v => (
+                <li key={v.v}>
+                  <button type="button" className={`inbox-row vis-row ${selected === v.v ? 'sel' : ''}`} onClick={() => select(v.v)}>
+                    <span className="inbox-from">{flag(v.country)} {v.city || v.countryName || 'Unknown location'}{Date.now() - v.last < 5 * 60e3 ? <i className="vis-dot" title="Online now"/> : null}</span>
+                    <span className="inbox-date">{timeAgo(v.last)}</span>
+                    <span className="inbox-topic">{deviceLine(v)} · {browserLine(v)}</span>
+                    <span className="inbox-snippet">{v.visits > 1 ? `${v.visits} visits` : '1 visit'} · {v.views} pages · {v.opens} windows · {duration(v.activeMs)}{v.ref ? ` · from ${v.ref}` : ''}{v.cv ? ' · CV ✓' : ''}{v.messages ? ' · wrote ✉' : ''}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="inbox-read">
+          {selected ? <VisitorDetail id={selected} onClose={() => select(null)}/> : <div className="cp-empty">Select a visitor to see everything they did.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const EVENT_LABEL: Record<string, string> = {view: 'Visit', open: 'Opened', click: 'Click', cv: 'CV', contact: 'Message', game: 'Game'};
+
+function VisitorDetail({id, onClose}: {id: string; onClose: () => void}) {
+  const [data, setData] = useState<{visitor: VisitorSummary; sessions: VisitorSession[]} | null>(null);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setData(null); setMissing(false);
+    void fetch(`/api/admin/visitors?id=${encodeURIComponent(id)}`, {cache: 'no-store'}).then(async res => {
+      if (!alive) return;
+      if (!res.ok) { setMissing(true); return; }
+      setData(await res.json());
+    });
+    return () => { alive = false; };
+  }, [id]);
+
+  if (missing) return <div className="cp-empty">This visitor has no activity in the last 90 days.</div>;
+  if (!data) return <div className="cp-empty">Loading…</div>;
+  const v = data.visitor;
+
+  return (
+    <article className="vis-detail">
+      <header>
+        <h2>{flag(v.country)} {place(v)}</h2>
+        <button type="button" className="xp-button" onClick={onClose}>Close</button>
+      </header>
+      <div className="vis-kpis">
+        <div><b>{v.visits}</b><span>{v.visits === 1 ? 'visit' : 'visits'}</span></div>
+        <div><b>{v.views}</b><span>pages</span></div>
+        <div><b>{v.opens}</b><span>windows</span></div>
+        <div><b>{duration(v.activeMs)}</b><span>time on site</span></div>
+      </div>
+      <dl className="vis-dl">
+        <dt>Location</dt><dd>{place(v)}</dd>
+        <dt>Network</dt><dd>{v.isp || '—'}</dd>
+        <dt>Device</dt><dd>{deviceLine(v)}</dd>
+        <dt>Browser</dt><dd>{browserLine(v)}</dd>
+        <dt>Screen</dt><dd>{v.screen ? v.screen.replace('x', ' × ') : '—'}</dd>
+        <dt>Language</dt><dd>{v.langs || (v.lang ? LANGS[v.lang] || v.lang : '—')}</dd>
+        <dt>Time zone</dt><dd>{v.tz || '—'}</dd>
+        <dt>Came from</dt><dd>{v.ref || 'Direct / unknown'}</dd>
+        <dt>First seen</dt><dd>{when(v.first)}</dd>
+        <dt>Last seen</dt><dd>{when(v.last)} ({timeAgo(v.last)})</dd>
+        <dt>Did</dt><dd>{[v.cv ? 'downloaded your CV' : '', v.messages ? `sent ${v.messages} message${v.messages > 1 ? 's' : ''}` : '', v.clicks ? `clicked ${v.clicks} link${v.clicks > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ') || 'Just looked around'}</dd>
+      </dl>
+
+      <h3>Visits</h3>
+      {data.sessions.map(s => (
+        <section key={s.id} className="vis-session">
+          <div className="vis-session-head"><b>{when(s.start)}</b><span>{duration(s.activeMs)}{s.ref ? ` · from ${s.ref}` : ''}</span></div>
+          <ul className="feed">
+            {s.events.map((e, i) => (
+              <li key={`${e.t}-${i}`}>
+                <span className={`feed-type t-${e.type}`}>{EVENT_LABEL[e.type] || e.type}</span>
+                <span className="feed-what">{e.type === 'click' ? e.target : e.type === 'contact' ? `Sent a message · ${e.target || ''}` : pageLabel(e.path || '/')}</span>
+                <span className="feed-meta">{new Date(e.t).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Tashkent'})}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </article>
   );
 }
 
