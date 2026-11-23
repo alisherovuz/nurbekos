@@ -28,7 +28,9 @@ const SIMPLE: Record<string, RouteApp> = {
 
 /** Maps a URL path (split into segments) to the window it should open. Returns null for unknown paths. */
 export function parseSegments(segments: string[], projects: Project[], experiences: Experience[]): Route | null {
-  const [first, second, ...rest] = segments.map(s => decodeURIComponent(s).toLowerCase());
+  const LEGACY: Record<string, string> = {edugrands: 'edugrants'}; // old links keep working after the rename
+  const [first, rawSecond, ...rest] = segments.map(s => decodeURIComponent(s).toLowerCase());
+  const second = rawSecond && LEGACY[rawSecond] ? LEGACY[rawSecond] : rawSecond;
   if (!first) return {app: 'welcome'};
   if (rest.length) return null;
   if (first === 'projects' && second) {

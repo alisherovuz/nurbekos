@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   applicationName: 'nurbekOS',
   authors: [{name: 'Nurbek Alisherov', url: SITE_URL}],
   creator: 'Nurbek Alisherov',
-  keywords: ['Nurbek Alisherov', 'EduGrands', 'Empira', 'Uzbekistan', 'AI', 'EdTech', 'founder', 'portfolio'],
+  keywords: ['Nurbek Alisherov', 'EduGrants', 'Empira', 'Uzbekistan', 'AI', 'EdTech', 'founder', 'portfolio'],
   robots: {index: true, follow: true},
 };
 
